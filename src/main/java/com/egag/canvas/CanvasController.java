@@ -1,8 +1,8 @@
 package com.egag.canvas;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/canvas")
@@ -11,5 +11,10 @@ public class CanvasController {
 
     private final CanvasService canvasService;
 
-    // TODO: start, stroke, topic, colorize, save, complete, get session
+    @GetMapping("/{id}")
+    public ResponseEntity<CanvasSessionResponse> getSession(@PathVariable String id) {
+        return ResponseEntity.ok(canvasService.getSession(id));
+    }
+
+    // TODO: start, stroke, topic, colorize, save, complete
 }
