@@ -1,73 +1,73 @@
 package com.egag.auth;
 
 import io.jsonwebtoken.*;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
+import java.security.Key;
 import java.util.Date;
 
+@Slf4j
 @Component
 public class JwtTokenProvider {
 
-    private final SecretKey key;
-    private final long accessExpiration;
-    private final long refreshExpiration;
+    @Value("${jwt.secret}")
+    private String jwtSecret;
 
-    public JwtTokenProvider(
-            @Value("${jwt.secret}") String secret,
-            @Value("${jwt.access-expiration}") long accessExpiration,
-            @Value("${jwt.refresh-expiration}") long refreshExpiration) {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-        this.accessExpiration = accessExpiration;
-        this.refreshExpiration = refreshExpiration;
-    }
+    @Value("${jwt.access-expiration}")
+    private long accessTokenExpiration; // 밀리초 단위 (예: 1800000 = 30분)
 
-    public String createAccessToken(String userId, String role) {
-        Date now = new Date();
+    /**
+     * 이메일 기반 Access Token 생성
+     */
+    public String generateAccessToken(String email) {
         return Jwts.builder()
-                .subject(userId)
-                .claim("role", role)
-                .issuedAt(now)
-                .expiration(new Date(now.getTime() + accessExpiration))
-                .signWith(key)
+                .setSubject(email)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + accessTokenExpiration))
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public String createRefreshToken(String userId) {
-        Date now = new Date();
-        return Jwts.builder()
-                .subject(userId)
-                .issuedAt(now)
-                .expiration(new Date(now.getTime() + refreshExpiration))
-                .signWith(key)
-                .compact();
-    }
-
-    public String getUserId(String token) {
+    /**
+     * 토큰에서 이메일(subject) 추출
+     */
+    public String getEmailFromToken(String token) {
         return parseClaims(token).getSubject();
     }
 
-    public String getRole(String token) {
-        return parseClaims(token).get("role", String.class);
-    }
-
+    /**
+     * 토큰 유효성 검증
+     */
     public boolean validateToken(String token) {
         try {
             parseClaims(token);
             return true;
-        } catch (JwtException | IllegalArgumentException e) {
-            return false;
+        } catch (ExpiredJwtException e) {
+            log.warn("만료된 JWT 토큰입니다: {}", e.getMessage());
+        } catch (UnsupportedJwtException e) {
+            log.warn("지원하지 않는 JWT 토큰입니다: {}", e.getMessage());
+        } catch (MalformedJwtException e) {
+            log.warn("잘못된 JWT 토큰입니다: {}", e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.warn("JWT 클레임이 비어있습니다: {}", e.getMessage());
         }
+        return false;
     }
 
     private Claims parseClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(key)
+        return Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
                 .build()
-                .parseSignedClaims(token)
-                .getPayload();
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
+    private Key getSigningKey() {
+        byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 }
