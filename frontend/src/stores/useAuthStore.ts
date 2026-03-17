@@ -1,32 +1,29 @@
 import { create } from 'zustand'
 
-interface User {
-  id: string
-  email: string
-  nickname: string
-  profileImageUrl: string | null
-  role: string
-  tokenBalance: number
-}
-
 interface AuthState {
-  user: User | null
+  userId: string | null
+  nickname: string | null
+  tokenBalance: number
   accessToken: string | null
   isAuthenticated: boolean
-  setAuth: (user: User, token: string) => void
+  setAuth: (userId: string, nickname: string, tokenBalance: number, token: string) => void
+  setTokenBalance: (balance: number) => void
   logout: () => void
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
+  userId: null,
+  nickname: null,
+  tokenBalance: 0,
   accessToken: null,
   isAuthenticated: false,
-  setAuth: (user, token) => {
+  setAuth: (userId, nickname, tokenBalance, token) => {
     localStorage.setItem('accessToken', token)
-    set({ user, accessToken: token, isAuthenticated: true })
+    set({ userId, nickname, tokenBalance, accessToken: token, isAuthenticated: true })
   },
+  setTokenBalance: (balance) => set({ tokenBalance: balance }),
   logout: () => {
     localStorage.removeItem('accessToken')
-    set({ user: null, accessToken: null, isAuthenticated: false })
+    set({ userId: null, nickname: null, tokenBalance: 0, accessToken: null, isAuthenticated: false })
   },
 }))
