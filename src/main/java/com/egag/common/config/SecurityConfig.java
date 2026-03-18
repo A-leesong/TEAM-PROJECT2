@@ -33,7 +33,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .userDetailsService(authService)
                 .authorizeHttpRequests(auth -> auth
-                        // 팀원 코드의 상세한 설정들 유지
+                        // 1. 기존 팀원 코드 유지
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/auth/kakao/**").permitAll()
                         .requestMatchers("/api/canvas/**").permitAll()
@@ -42,6 +42,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/users/{id}/artworks").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/search").permitAll()
                         .requestMatchers("/api/inquiries").permitAll()
+
+                        // 2. ⭐ 우리가 만든 정책(Policy) API 허용 추가
+                        .requestMatchers("/api/policy/**").permitAll()
+
+                        // 3. 나머지 설정 유지
                         .requestMatchers("/api/payments/webhook").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")

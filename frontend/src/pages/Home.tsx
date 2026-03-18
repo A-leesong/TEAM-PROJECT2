@@ -192,9 +192,16 @@ export default function Home() {
             <div style={s.footerLinks}>
               <Link to="/contact" style={s.footerLink}>1:1 문의하기</Link>
               <span style={s.divider}></span>
-              <span style={s.footerItem}>이용약관</span>
+
+              {/* Link 컴포넌트로 교체 */}
+              <Link to="/terms" style={s.footerLink}>이용약관</Link>
+
               <span style={s.divider}></span>
-              <span style={{ ...s.footerItem, fontWeight: 700 }}>개인정보처리방침</span>
+
+              {/* 개인정보처리방침은 보통 굵게 표시하여 강조합니다 */}
+              <Link to="/privacy" style={{ ...s.footerLink, fontWeight: 800, color: '#475569' }}>
+                개인정보처리방침
+              </Link>
             </div>
           </div>
         </footer>

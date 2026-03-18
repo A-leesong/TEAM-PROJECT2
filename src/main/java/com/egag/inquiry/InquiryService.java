@@ -1,5 +1,6 @@
 package com.egag.inquiry;
 
+import com.egag.common.EmailService;
 import com.egag.common.domain.User;
 import com.egag.inquiry.dto.InquiryRequest;
 import lombok.RequiredArgsConstructor;
