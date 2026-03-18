@@ -335,7 +335,7 @@ export default function Decalcomania() {
   if (phase === 'confirm') {
     return (
       <div style={styles.startBg}>
-        <div style={styles.startHeader}>
+        <div style={{ ...styles.startHeader, cursor: 'pointer' }} onClick={() => navigate('/')}>
           <span style={styles.logoMirror}>🪞</span>
           <span style={styles.logoText}>Decal<b>co</b></span>
         </div>
@@ -353,7 +353,7 @@ export default function Decalcomania() {
               취소
             </button>
             <button style={styles.btnPrimary} onClick={handleConfirmStart}>
-              확인, 시작하기 →
+              시작하기 →
             </button>
           </div>
         </div>

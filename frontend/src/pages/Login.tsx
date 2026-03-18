@@ -37,7 +37,7 @@ export default function Login() {
     try {
       const res = await login(email, password)
       setAuth(res.userId, res.nickname, res.tokenBalance, res.accessToken)
-      navigate('/decalcomania?confirm=true')
+      navigate('/')
     } catch (err: any) {
       const code = err.response?.data?.error?.code
       if (err.response?.status === 401 || code === 'INVALID_CREDENTIALS') {

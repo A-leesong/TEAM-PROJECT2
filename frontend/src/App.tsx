@@ -4,6 +4,9 @@ import Decalcomania from './pages/Decalcomania'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import PasswordReset from './pages/PasswordReset'
+import PasswordResetConfirm from './pages/PasswordResetConfirm'
+import OAuthCallback from './pages/OAuthCallback'
 
 function App() {
   return (
@@ -25,7 +28,9 @@ function App() {
       <Route path="/billing" element={<div>Billing</div>} />
       <Route path="/profile" element={<div>Profile</div>} />
       <Route path="/contact" element={<div>Contact</div>} />
-      <Route path="/password-reset" element={<div>Password Reset</div>} />
+      <Route path="/password-reset" element={<PasswordReset />} />
+      <Route path="/password-reset/confirm" element={<PasswordResetConfirm />} />
+      <Route path="/oauth/callback" element={<OAuthCallback />} />
       <Route path="/payment/success" element={<div>Payment Success</div>} />
       <Route path="/payment/fail" element={<div>Payment Fail</div>} />
       <Route path="/terms" element={<div>Terms</div>} />

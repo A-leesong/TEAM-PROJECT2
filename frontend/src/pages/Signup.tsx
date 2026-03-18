@@ -102,7 +102,7 @@ export default function Signup() {
         email: form.email, phone: form.phone, password: form.password,
       })
       setAuth(res.userId, res.nickname, res.tokenBalance, res.accessToken)
-      navigate('/decalcomania?skip=true')
+      navigate('/')
     } catch (err: any) {
       const code = err.response?.data?.error?.code ?? ''
       if (code === 'EMAIL_DUPLICATED') {
@@ -331,6 +331,10 @@ export default function Signup() {
           이미 계정이 있으신가요?{' '}
           <Link to="/login" style={s.loginLink}>로그인</Link>
         </p>
+
+        <button style={s.btnHome} onClick={() => navigate('/')}>
+          메인으로 돌아가기
+        </button>
       </div>
     </div>
   )
@@ -408,6 +412,11 @@ const s: Record<string, React.CSSProperties> = {
   },
   loginText: { fontSize: 14, color: '#64748B', marginTop: 20 },
   loginLink: { color: '#3B82F6', fontWeight: 600, textDecoration: 'none' },
+  btnHome: {
+    marginTop: 12, padding: '10px 32px', fontSize: 14, fontWeight: 700,
+    background: 'linear-gradient(135deg, #38BDF8, #3B82F6)',
+    color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer',
+  },
   modalOverlay: {
     position: 'fixed' as const, inset: 0, background: 'rgba(0,0,0,0.4)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
