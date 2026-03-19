@@ -278,7 +278,16 @@ public class PaymentService {
                 Map.class
             );
         } catch (HttpClientErrorException e) {
-            throw new RuntimeException("토스페이 결제 확인 실패: " + e.getResponseBodyAsString());
+            String tossError = new String(e.getResponseBodyAsByteArray(), StandardCharsets.UTF_8);
+            log.error("Toss confirm HTTP {} 실패: {}", e.getStatusCode().value(), tossError);
+            throw new RuntimeException("[" + e.getStatusCode().value() + "] 토스페이 결제 확인 실패: " + tossError);
+        } catch (org.springframework.web.client.HttpServerErrorException e) {
+            String tossError = new String(e.getResponseBodyAsByteArray(), StandardCharsets.UTF_8);
+            log.error("Toss confirm HTTP {} 서버오류: {}", e.getStatusCode().value(), tossError);
+            throw new RuntimeException("[" + e.getStatusCode().value() + "] 토스페이 서버 오류: " + tossError);
+        } catch (Exception e) {
+            log.error("Toss confirm 예외: {}", e.getMessage(), e);
+            throw new RuntimeException("토스페이 결제 확인 중 오류: " + e.getMessage());
         }
 
         Payment payment = Payment.builder()

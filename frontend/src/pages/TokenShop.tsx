@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { useAuthStore } from '../stores/useAuthStore'
@@ -10,6 +10,7 @@ declare global {
 }
 
 const TOSS_CLIENT_KEY = (import.meta as any).env?.VITE_TOSS_CLIENT_KEY || ''
+const TOSS_WIDGET_KEY = (import.meta as any).env?.VITE_TOSS_WIDGET_KEY || ''
 
 type PayMethod = 'kakaopay' | 'tosspay' | 'card' | 'bank'
 
@@ -35,6 +36,11 @@ export default function TokenShop() {
   const [bankInfo, setBankInfo] = useState<BankInfo | null>(null)
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+  const [tossModal, setTossModal] = useState(false)
+  const [tossModalReady, setTossModalReady] = useState(false)
+  const [tossModalLoading, setTossModalLoading] = useState(false)
+  const widgetsRef = useRef<any>(null)
+  const tossOrderRef = useRef<string>('')
 
   useEffect(() => {
     getPackages().then(setPackages)
@@ -59,7 +65,7 @@ export default function TokenShop() {
             setSuccessMsg(`토큰이 충전되었습니다!`)
           })
           .catch((err: any) => {
-            const msg = err?.response?.data?.error?.message || '토스 결제 확인 중 오류가 발생했습니다.'
+            const msg = err?.response?.data?.message || err?.response?.data?.error?.message || '토스 결제 확인 중 오류가 발생했습니다.'
             setError(String(msg))
           })
       } else {
@@ -91,21 +97,16 @@ export default function TokenShop() {
     }
 
     if (payMethod === 'tosspay') {
-      if (!TOSS_CLIENT_KEY) {
-        setError('토스페이 클라이언트 키가 설정되지 않았습니다. (VITE_TOSS_CLIENT_KEY)')
-        setLoading(false)
-        return
-      }
       try {
-        sessionStorage.setItem('toss_package_id', selectedPkg.id)
         const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY)
         const customerKey = (nickname || 'user').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 50)
         const payment = tossPayments.payment({ customerKey })
-        const merchantUid = `egag_${selectedPkg.id.toLowerCase()}_${Date.now()}`
+        const orderId = `egag_${selectedPkg.id.toLowerCase()}_${Date.now()}`
+        sessionStorage.setItem('toss_package_id', selectedPkg.id)
         await payment.requestPayment({
           method: 'CARD',
           amount: { currency: 'KRW', value: selectedPkg.price },
-          orderId: merchantUid,
+          orderId,
           orderName: `${selectedPkg.displayName} (토큰 ${selectedPkg.tokenAmount}개)`,
           successUrl: `${window.location.origin}/token-shop?status=toss_success`,
           failUrl: `${window.location.origin}/token-shop?status=fail`,
@@ -114,8 +115,31 @@ export default function TokenShop() {
       } catch (err: any) {
         sessionStorage.removeItem('toss_package_id')
         setError(err?.message || '토스페이 결제 중 오류가 발생했습니다.')
-        setLoading(false)
       }
+      setLoading(false)
+      return
+    }
+
+    if (payMethod === 'card') {
+      try {
+        const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY)
+        const customerKey = (nickname || 'user').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 50)
+        const payment = tossPayments.payment({ customerKey })
+        const orderId = `egag_${selectedPkg.id.toLowerCase()}_${Date.now()}`
+        sessionStorage.setItem('toss_package_id', selectedPkg.id)
+        await payment.requestPayment({
+          method: 'CARD',
+          amount: { currency: 'KRW', value: selectedPkg.price },
+          orderId,
+          orderName: `${selectedPkg.displayName} (토큰 ${selectedPkg.tokenAmount}개)`,
+          successUrl: `${window.location.origin}/token-shop?status=toss_success`,
+          failUrl: `${window.location.origin}/token-shop?status=fail`,
+        })
+      } catch (err: any) {
+        sessionStorage.removeItem('toss_package_id')
+        setError(err?.message || '카드 결제 중 오류가 발생했습니다.')
+      }
+      setLoading(false)
       return
     }
 
@@ -142,31 +166,52 @@ export default function TokenShop() {
       return
     }
 
-    // 카드결제 → Toss SDK로 처리
-    if (!TOSS_CLIENT_KEY) {
-      setError('토스페이먼츠 클라이언트 키가 설정되지 않았습니다.')
-      setLoading(false)
-      return
-    }
+  }
+
+  const openTossModal = () => {
+    if (!selectedPkg || !TOSS_WIDGET_KEY) return
+    setTossModal(true)
+    setTossModalReady(false)
+    widgetsRef.current = null
+
+    const merchantUid = `egag_${selectedPkg.id.toLowerCase()}_${Date.now()}`
+    tossOrderRef.current = merchantUid
+    sessionStorage.setItem('toss_package_id', selectedPkg.id)
+
+    setTimeout(async () => {
+      try {
+        const tossPayments = await loadTossPayments(TOSS_WIDGET_KEY)
+        const customerKey = (nickname || 'user').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 50)
+        const widgets = tossPayments.widgets({ customerKey })
+        await widgets.setAmount({ currency: 'KRW', value: selectedPkg.price })
+        await widgets.renderPaymentMethods({ selector: '#toss-modal-methods', variantKey: 'DEFAULT' })
+        await widgets.renderAgreement({ selector: '#toss-modal-agreement', variantKey: 'AGREEMENT' })
+        widgetsRef.current = widgets
+        setTossModalReady(true)
+      } catch (e: any) {
+        sessionStorage.removeItem('toss_package_id')
+        setTossModal(false)
+        setError(e?.message || '토스 결제 초기화 실패')
+      }
+    }, 100)
+  }
+
+  const handleTossModalPay = async () => {
+    if (!widgetsRef.current || !selectedPkg) return
+    setTossModalLoading(true)
     try {
-      sessionStorage.setItem('toss_package_id', selectedPkg.id)
-      const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY)
-      const customerKey = (nickname || 'user').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 50)
-      const payment = tossPayments.payment({ customerKey })
-      const merchantUid = `egag_${selectedPkg.id.toLowerCase()}_${Date.now()}`
-      await payment.requestPayment({
-        method: 'CARD',
-        amount: { currency: 'KRW', value: selectedPkg.price },
-        orderId: merchantUid,
+      await widgetsRef.current.requestPayment({
+        orderId: tossOrderRef.current,
         orderName: `${selectedPkg.displayName} (토큰 ${selectedPkg.tokenAmount}개)`,
         successUrl: `${window.location.origin}/token-shop?status=toss_success`,
         failUrl: `${window.location.origin}/token-shop?status=fail`,
       })
     } catch (err: any) {
       sessionStorage.removeItem('toss_package_id')
-      setError(err?.message || '카드 결제 중 오류가 발생했습니다.')
-      setLoading(false)
+      setError(err?.message || '결제 중 오류가 발생했습니다.')
+      setTossModal(false)
     }
+    setTossModalLoading(false)
   }
 
   if (successMsg) {
@@ -205,6 +250,31 @@ export default function TokenShop() {
 
   return (
     <div style={s.bg}>
+      {tossModal && (
+        <div style={s.modalOverlay}>
+          <div style={s.modalBox}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#3a5a8a' }}>결제 수단 선택</h3>
+              <button onClick={() => { setTossModal(false); sessionStorage.removeItem('toss_package_id') }}
+                style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#9CA3AF' }}>✕</button>
+            </div>
+            {!tossModalReady && (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: '#8a7a9a', fontSize: 14 }}>불러오는 중...</div>
+            )}
+            <div id="toss-modal-methods" />
+            <div id="toss-modal-agreement" />
+            {tossModalReady && (
+              <button
+                style={{ ...s.payBtn, marginTop: 16, marginBottom: 0 }}
+                onClick={handleTossModalPay}
+                disabled={tossModalLoading}
+              >
+                {tossModalLoading ? '처리 중...' : `${selectedPkg?.price.toLocaleString()}원 결제하기`}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       {/* 헤더 */}
       <header style={s.header}>
         <div style={s.logo} onClick={() => navigate('/')} role="button">
@@ -432,6 +502,15 @@ const s: Record<string, React.CSSProperties> = {
   backBtn: {
     background: 'none', border: 'none', color: '#8a8aaa',
     fontSize: 15, cursor: 'pointer', fontWeight: 600,
+  },
+  modalOverlay: {
+    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+  },
+  modalBox: {
+    background: '#fff', borderRadius: 24, padding: '28px 28px 24px',
+    width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto',
+    boxShadow: '0 8px 40px rgba(0,0,0,0.18)',
   },
   successBox: {
     margin: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center',
