@@ -1,3 +1,4 @@
+import React from 'react';
 import { Link, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/useAuthStore';
 
@@ -5,6 +6,7 @@ const AdminSidebar = () => {
     const location = useLocation();
     const { isAuthenticated, role, logout } = useAuthStore();
 
+    // 관리자 권한 체크 (문자열 또는 숫자형 대응)
     const isAdmin = role === 'ADMIN' || String(role) === '100';
 
     if (!isAuthenticated || !isAdmin) {
@@ -12,11 +14,10 @@ const AdminSidebar = () => {
     }
 
     const menuItems = [
-        // 🛠️ name에서 중복된 이모지를 제거하여 텍스트만 남겼습니다.
         { path: '/admin/dashboard', name: '대시보드', icon: '📈' },
-        { path: '/admin/users', name: '토큰 관리', icon: '🪙' },
+        // 🛠️ 기존 '토큰 관리'와 '유저 관리'를 하나로 통합하여 명칭 변경
+        { path: '/admin/users', name: '통합 유저 관리', icon: '👥' },
         { path: '/admin/payments', name: '결제 내역', icon: '💳' },
-        { path: '/admin/all-users', name: '유저 관리', icon: '👥' },
     ];
 
     return (
@@ -45,7 +46,6 @@ const AdminSidebar = () => {
                                     fontWeight: isActive ? 800 : 500,
                                 }}
                             >
-                                {/* 아이콘 영역의 너비를 고정하여 정렬을 맞춥니다 */}
                                 <span style={s.iconWrapper}>{item.icon}</span>
                                 {item.name}
                             </Link>
@@ -70,6 +70,7 @@ const AdminSidebar = () => {
     );
 };
 
+// 🌌 스타일 정의 (기존 스타일 유지 및 최적화)
 const s: Record<string, React.CSSProperties> = {
     layout: { display: 'flex', minHeight: '100vh', backgroundColor: '#F9FAFB' },
     sidebar: {
@@ -102,7 +103,6 @@ const s: Record<string, React.CSSProperties> = {
         letterSpacing: '1.5px',
         textTransform: 'uppercase'
     },
-    // 🛠️ nav 스타일 강화 (세로 정렬 강제)
     nav: {
         flex: 1,
         padding: '0 15px',
@@ -120,7 +120,6 @@ const s: Record<string, React.CSSProperties> = {
         transition: 'all 0.2s',
         boxSizing: 'border-box'
     },
-    // 🛠️ 아이콘 간격 고정 스타일
     iconWrapper: {
         marginRight: '12px',
         fontSize: '18px',
