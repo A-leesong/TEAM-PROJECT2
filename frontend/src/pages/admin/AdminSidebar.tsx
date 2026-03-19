@@ -13,9 +13,9 @@ const AdminSidebar = () => {
 
     const menuItems = [
         { path: '/admin/dashboard', name: '📊 대시보드', icon: '📈' },
-        { path: '/admin/users', name: '👥 유저 관리', icon: '👤' },
+        { path: '/admin/users', name: '🪙 토큰 관리', icon: '🗂️' },
         { path: '/admin/payments', name: '💳 결제 내역', icon: '💰' },
-        { path: '/admin/all-users', name: '📋 전체 목록', icon: '🗂️' },
+        { path: '/admin/all-users', name: '👥 유저 관리', icon: '👤' },
     ];
 
     return (

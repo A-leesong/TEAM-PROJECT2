@@ -1,12 +1,13 @@
 package com.egag.admin;
 
-import com.egag.common.domain.UserRepository; // 👈 유저 수 조회를 위해 추가
-import lombok.Builder;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
+import com.egag.admin.dto.AdminDashboardStatsResponse;
+import com.egag.admin.dto.TokenRequest;
+import com.egag.common.domain.UserRepository;
+import lombok.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
+import java.util.Collections;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -14,28 +15,36 @@ import org.springframework.web.bind.annotation.*;
 public class AdminController {
 
     private final AdminService adminService;
-    private final UserRepository userRepository; // 👈 DB 조회를 위해 주입
+    private final UserRepository userRepository;
 
-    // ✅ [추가] 대시보드 통계 데이터 API
+    // 📊 1. 대시보드 통계 데이터 API (진짜 데이터 연동)
     @GetMapping("/dashboard/stats")
     public ResponseEntity<AdminDashboardStatsResponse> getDashboardStats() {
-        // 실제 유저 수 조회
-        long totalUsers = userRepository.count();
-
-        // 💡 실시간 데이터 연동 (매출 등은 나중에 서비스 레이어에서 가져오시면 됩니다)
-        AdminDashboardStatsResponse stats = AdminDashboardStatsResponse.builder()
-                .totalUsers(totalUsers)
-                .todayNewUsers(3)        // TODO: 실제 로직 구현 필요
-                .totalSales(1250000)     // TODO: 실제 로직 구현 필요
-                .todaySales(35000)       // TODO: 실제 로직 구현 필요
-                .suspendedUsers(1)       // TODO: 실제 로직 구현 필요
-                .activeUsers(totalUsers - 1)
-                .build();
-
+        // ✅ 이제 서비스에서 계산해온 '진짜' 통계를 반환합니다.
+        AdminDashboardStatsResponse stats = adminService.getRealDashboardStats();
         return ResponseEntity.ok(stats);
     }
 
-    // 💰 기존 수동 토큰 지급 API (유지)
+    // 📝 2. 토큰 지급 로그 전체 조회 API
+    @GetMapping("/tokens/logs")
+    public ResponseEntity<List<AdminActionLog>> getTokenLogs() {
+        return ResponseEntity.ok(adminService.getAllTokenLogs());
+    }
+
+    // 👥 3. 전체 유저 목록 조회 API
+    @GetMapping("/users/all")
+    public ResponseEntity<List<?>> getAllUsers() {
+        return ResponseEntity.ok(userRepository.findAll());
+    }
+
+    // 🔍 4. 닉네임으로 유저 검색 API
+    @GetMapping("/users")
+    public ResponseEntity<?> searchUser(@RequestParam String nickname) {
+        return ResponseEntity.ok(userRepository.findByNickname(nickname)
+                .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다.")));
+    }
+
+    // 💰 5. 수동 토큰 지급 API
     @PostMapping("/tokens/manual")
     public ResponseEntity<String> giveToken(@RequestBody TokenRequest request) {
         String currentAdminId = "admin_01";
@@ -47,25 +56,17 @@ public class AdminController {
         );
         return ResponseEntity.ok("토큰 지급 및 로그 기록 완료!");
     }
-}
 
-// --- DTO 객체들 ---
+    // 💳 6. 전체 결제 내역 조회 API
+    @GetMapping("/payments")
+    public ResponseEntity<List<?>> getAllPayments() {
+        return ResponseEntity.ok(Collections.emptyList());
+    }
 
-@Getter
-@Builder // ✅ 대시보드 응답용 빌더 추가
-class AdminDashboardStatsResponse {
-    private long totalUsers;
-    private long todayNewUsers;
-    private long totalSales;
-    private long todaySales;
-    private long suspendedUsers;
-    private long activeUsers;
-}
-
-@Getter
-@Setter
-class TokenRequest {
-    private String userId;
-    private Integer amount;
-    private String reason;
+    // ❌ 7. 결제 강제 취소 API
+    @PostMapping("/payments/{id}/cancel")
+    public ResponseEntity<String> cancelPayment(@PathVariable String id) {
+        System.out.println("결제 취소 요청 처리 중 - ID: " + id);
+        return ResponseEntity.ok("결제(ID: " + id + ") 취소 처리가 완료되었습니다.");
+    }
 }

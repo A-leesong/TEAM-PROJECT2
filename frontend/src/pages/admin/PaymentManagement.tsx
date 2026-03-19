@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/useAuthStore';
 
-// 💳 결제 내역 타입 정의
+// 💳 결제 내역 타입 정의 (동일)
 interface Payment {
     id: string;
     userId: string;
@@ -18,37 +18,48 @@ interface Payment {
 const PaymentManagement = () => {
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const role = useAuthStore((state) => state.role);
+    const accessToken = useAuthStore((state) => state.accessToken); // ✅ 토큰 가져오기 추가
 
     const [payments, setPayments] = useState<Payment[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // 1️⃣ 결제 내역 가져오기
+    // 1️⃣ 결제 내역 가져오기 (인증 헤더 추가)
     const fetchPayments = useCallback(async () => {
+        if (!accessToken) return; // ✅ 토큰 없으면 중단
+
         try {
             setLoading(true);
-            const res = await axios.get('/api/admin/payments');
+            const res = await axios.get('/api/admin/payments', {
+                headers: {
+                    Authorization: `Bearer ${accessToken}` // ✅ 인증 헤더 추가
+                }
+            });
             setPayments(res.data);
         } catch (err) {
             console.error("결제 내역 로딩 실패:", err);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [accessToken]); // ✅ 의존성에 accessToken 추가
 
     useEffect(() => {
-        if (isAuthenticated && role === 'ADMIN') {
+        if (isAuthenticated && role === 'ADMIN' && accessToken) {
             fetchPayments();
         }
-    }, [isAuthenticated, role, fetchPayments]);
+    }, [isAuthenticated, role, accessToken, fetchPayments]);
 
-    // 2️⃣ 결제 취소 핸들러 (관리자 권한으로 강제 취소 등)
+    // 2️⃣ 결제 취소 핸들러 (인증 헤더 추가)
     const handleCancelPayment = async (paymentId: string) => {
         if (!confirm("정말로 이 결제를 취소 처리하시겠습니까? 지급된 토큰은 회수되지 않으니 주의하세요!")) return;
 
         try {
-            await axios.post(`/api/admin/payments/${paymentId}/cancel`);
+            await axios.post(`/api/admin/payments/${paymentId}/cancel`, {}, {
+                headers: {
+                    Authorization: `Bearer ${accessToken}` // ✅ 취소 요청에도 토큰 필요
+                }
+            });
             alert("결제가 취소 처리되었습니다.");
-            fetchPayments(); // 목록 새로고침
+            fetchPayments();
         } catch (err) {
             console.error("결제 취소 실패:", err);
             alert("취소 처리에 실패했습니다.");
@@ -59,7 +70,8 @@ const PaymentManagement = () => {
         return <Navigate to="/" replace />;
     }
 
-    // 상태에 따른 배지 색상 함수
+    // ... (상태 스타일 함수 및 JSX는 기존과 동일) ...
+
     const getStatusStyle = (status: string) => {
         switch (status) {
             case 'SUCCESS': return { backgroundColor: '#10B981', color: '#fff' };
@@ -121,7 +133,7 @@ const PaymentManagement = () => {
     );
 };
 
-// 🌌 스타일 정의
+// ... (s 스타일 정의는 동일) ...
 const s: Record<string, React.CSSProperties> = {
     container: { padding: '40px', maxWidth: '1100px', margin: '0 auto' },
     header: { marginBottom: '30px' },
