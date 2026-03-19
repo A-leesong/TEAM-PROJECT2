@@ -12,6 +12,7 @@ public class TokenResponse {
     private final String userId;
     private final String nickname;
     private final int tokenBalance;
+    private final boolean needsOnboarding;
 
     public TokenResponse(String accessToken, String refreshToken,
                          String userId, String nickname, int tokenBalance) {
@@ -20,5 +21,16 @@ public class TokenResponse {
         this.userId = userId;
         this.nickname = nickname;
         this.tokenBalance = tokenBalance;
+        this.needsOnboarding = false;
+    }
+
+    public TokenResponse(String accessToken, String refreshToken,
+                         String userId, String nickname, int tokenBalance, boolean needsOnboarding) {
+        this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
+        this.userId = userId;
+        this.nickname = nickname;
+        this.tokenBalance = tokenBalance;
+        this.needsOnboarding = needsOnboarding;
     }
 }

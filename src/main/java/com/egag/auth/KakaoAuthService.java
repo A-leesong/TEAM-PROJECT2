@@ -175,7 +175,10 @@ public class KakaoAuthService {
         refreshToken.setExpiryDate(Instant.now().plusMillis(refreshTokenExpiration));
         refreshTokenRepository.save(refreshToken);
 
+        boolean needsOnboarding = (user.getName() == null || user.getName().isBlank())
+                || (user.getPhone() == null || user.getPhone().isBlank());
+
         return new TokenResponse(accessToken, refreshToken.getToken(),
-                user.getId(), user.getNickname(), user.getTokenBalance());
+                user.getId(), user.getNickname(), user.getTokenBalance(), needsOnboarding);
     }
 }

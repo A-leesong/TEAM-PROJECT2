@@ -1,4 +1,6 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
+import { useAuthStore } from './stores/useAuthStore'
 import Canvas from './pages/Canvas'
 import Decalcomania from './pages/Decalcomania'
 import Home from './pages/Home'
@@ -8,13 +10,30 @@ import Inquiry from './pages/Inquiry'
 import PasswordReset from './pages/PasswordReset'
 import PasswordResetConfirm from './pages/PasswordResetConfirm'
 import OAuthCallback from './pages/OAuthCallback'
+import KakaoOnboarding from './pages/KakaoOnboarding'
 import Policy from './pages/Policy'
 import TokenShop from './pages/TokenShop'
 import MyPage from './pages/MyPage'
 
+function OnboardingGuard() {
+  const { needsOnboarding } = useAuthStore()
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  useEffect(() => {
+    if (needsOnboarding && location.pathname !== '/kakao-onboarding') {
+      navigate('/kakao-onboarding', { replace: true })
+    }
+  }, [needsOnboarding, location.pathname])
+
+  return null
+}
+
 function App() {
   return (
-    <Routes>
+    <>
+      <OnboardingGuard />
+      <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
@@ -37,6 +56,7 @@ function App() {
       <Route path="/password-reset" element={<PasswordReset />} />
       <Route path="/password-reset/confirm" element={<PasswordResetConfirm />} />
       <Route path="/oauth/callback" element={<OAuthCallback />} />
+      <Route path="/kakao-onboarding" element={<KakaoOnboarding />} />
       <Route path="/payment/success" element={<div>Payment Success</div>} />
       <Route path="/payment/fail" element={<div>Payment Fail</div>} />
         <Route path="/terms" element={<Policy type="TERMS" />} />
@@ -46,6 +66,7 @@ function App() {
       <Route path="/admin" element={<div>Admin</div>} />
       <Route path="*" element={<div>404 Not Found</div>} />
     </Routes>
+    </>
   )
 }
 
