@@ -71,4 +71,4 @@ public class AdminService {
         logRepository.save(log);
     }
 }
-//테스트3
+//테스트4
