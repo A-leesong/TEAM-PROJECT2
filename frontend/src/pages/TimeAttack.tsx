@@ -1017,7 +1017,7 @@ export default function TimeAttack() {
                 height={stageSize.height}
                 style={{
                   display: 'block',
-                  cursor: gamePhase === 'drawing' ? (isEraser ? 'cell' : 'crosshair') : 'default',
+                  cursor: gamePhase === 'drawing' ? (isEraser ? 'cell' : "url('/pencil-cursor.svg') 5 27, crosshair") : 'default',
                   touchAction: 'none',
                 }}
                 onPointerDown={gamePhase === 'drawing' ? handlePointerDown : undefined}

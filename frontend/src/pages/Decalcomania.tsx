@@ -443,7 +443,7 @@ export default function Decalcomania() {
             <div style={{ position: 'absolute', top: 0, left: '50%', width: '50%', height: '100%', cursor: 'not-allowed', zIndex: 10, pointerEvents: 'auto' }} />
           )}
           <Stage ref={stageRef} width={stageSize.width} height={stageSize.height}
-            style={{ display: 'block', cursor: canDraw ? (activeTool === 'bucket' ? 'copy' : isEraser ? 'cell' : 'crosshair') : 'default', touchAction: 'none' }}
+            style={{ display: 'block', cursor: canDraw ? (activeTool === 'bucket' ? 'copy' : isEraser ? 'cell' : "url('/pencil-cursor.svg') 5 27, crosshair") : 'default', touchAction: 'none' }}
             onPointerDown={canDraw ? (isBucket ? handleBucketClick : handlePointerDown) : undefined}
             onPointerMove={canDraw ? handlePointerMove : undefined}
             onPointerUp={canDraw ? handlePointerUp : undefined}>

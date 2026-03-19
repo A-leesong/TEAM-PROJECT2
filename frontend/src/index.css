@@ -62,6 +62,10 @@ body {
   margin: 0;
 }
 
+*, *::before, *::after {
+  cursor: url('/pencil-cursor.svg') 5 27, auto !important;
+}
+
 h1,
 h2 {
   font-family: var(--heading);

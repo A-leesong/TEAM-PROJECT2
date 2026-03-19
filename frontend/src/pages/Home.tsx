@@ -1,14 +1,53 @@
 import { useNavigate } from 'react-router-dom'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { useAuthStore } from '../stores/useAuthStore'
 import { Pencil, Layers, Ticket, Sparkles, Timer, ArrowRight, MessageCircle, ChevronUp } from 'lucide-react'
 import Header from '../components/Header'
+
+function SparkleStars() {
+  const stars = useMemo(() => {
+    const shapes = ['•', '·']
+    const colors = ['#ffffff', '#ffd43b', '#ffb3c6', '#a0c4ff', '#b5ead7', '#ffc8dd']
+    return Array.from({ length: 70 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: 8 + Math.random() * 14,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      shape: shapes[Math.floor(Math.random() * shapes.length)],
+      duration: 1.5 + Math.random() * 3,
+      delay: Math.random() * 4,
+      isCross: false,
+    }))
+  }, [])
+
+  return (
+    <div style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', overflow: 'hidden' }}>
+      {stars.map(s => (
+        <span key={s.id} style={{
+          position: 'absolute',
+          left: `${s.x}%`,
+          top: `${s.y}%`,
+          fontSize: s.size,
+          color: s.color,
+          animation: `${s.isCross ? 'twinkle-cross' : 'twinkle'} ${s.duration}s ease-in-out ${s.delay}s infinite`,
+          opacity: 0,
+          filter: `blur(${s.isCross ? 0 : 0.3}px) drop-shadow(0 0 ${s.size * 0.4}px ${s.color})`,
+          lineHeight: 1,
+        }}>
+          {s.shape}
+        </span>
+      ))}
+    </div>
+  )
+}
 
 export default function Home() {
   const navigate = useNavigate()
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const tokenBalance = useAuthStore(s => s.tokenBalance)
   const featureRefs = useRef<(HTMLDivElement | null)[]>([])
+  const featureSectionRef = useRef<HTMLElement | null>(null)
   const [showTop, setShowTop] = useState(false)
   const [showTokenModal, setShowTokenModal] = useState<'canvas' | 'deco' | 'time' | null>(null)
 
@@ -35,9 +74,31 @@ export default function Home() {
     return () => observer.disconnect()
   }, [])
 
+  const handleStarCursor = (e: React.MouseEvent<HTMLElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const stars = ['✦', '★', '✶', '✸', '⋆']
+    const colors = ['#fff', '#ffe066', '#c47a8a', '#a0c4ff', '#b5ead7']
+    const star = document.createElement('span')
+    star.textContent = stars[Math.floor(Math.random() * stars.length)]
+    star.style.cssText = `
+      position:absolute; left:${x}px; top:${y}px;
+      color:${colors[Math.floor(Math.random() * colors.length)]};
+      font-size:${12 + Math.random() * 14}px;
+      pointer-events:none; user-select:none; z-index:10;
+      animation:star-pop ${0.5 + Math.random() * 0.4}s ease-out forwards;
+    `
+    e.currentTarget.appendChild(star)
+    setTimeout(() => star.remove(), 900)
+  }
+
   return (
     <div style={s.bg}>
       <style>{`
+        @keyframes star-pop { 0%{transform:translate(-50%,-50%) scale(0) rotate(0deg);opacity:1} 100%{transform:translate(-50%,-50%) scale(1.4) rotate(45deg);opacity:0} }
+        @keyframes twinkle { 0%,100%{opacity:0;transform:scale(0.4)} 50%{opacity:1;transform:scale(1)} }
+        @keyframes twinkle-cross { 0%,100%{opacity:0;transform:scale(0.3) rotate(0deg)} 50%{opacity:0.9;transform:scale(1) rotate(20deg)} }
         @keyframes float1 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-18px)} }
         @keyframes float2 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
         @keyframes blob1 { 0%{transform:translateY(0px)} 50%{transform:translateY(-80px)} 100%{transform:translateY(0px)} }
@@ -213,7 +274,8 @@ export default function Home() {
       </div>
 
       {/* 기능 소개 섹션 */}
-      <section style={s.featureSection}>
+      <section style={{ ...s.featureSection, position: 'relative' }} onMouseMove={handleStarCursor}>
+        <SparkleStars />
 
         {/* 별 레이어 */}
         <div className="star-field" style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', borderRadius: 'inherit' }} />
