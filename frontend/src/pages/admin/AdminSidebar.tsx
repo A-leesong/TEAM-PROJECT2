@@ -12,10 +12,11 @@ const AdminSidebar = () => {
     }
 
     const menuItems = [
-        { path: '/admin/dashboard', name: '📊 대시보드', icon: '📈' },
-        { path: '/admin/users', name: '🪙 토큰 관리', icon: '🗂️' },
-        { path: '/admin/payments', name: '💳 결제 내역', icon: '💰' },
-        { path: '/admin/all-users', name: '👥 유저 관리', icon: '👤' },
+        // 🛠️ name에서 중복된 이모지를 제거하여 텍스트만 남겼습니다.
+        { path: '/admin/dashboard', name: '대시보드', icon: '📈' },
+        { path: '/admin/users', name: '토큰 관리', icon: '🪙' },
+        { path: '/admin/payments', name: '결제 내역', icon: '💳' },
+        { path: '/admin/all-users', name: '유저 관리', icon: '👥' },
     ];
 
     return (
@@ -44,14 +45,14 @@ const AdminSidebar = () => {
                                     fontWeight: isActive ? 800 : 500,
                                 }}
                             >
-                                <span style={{ marginRight: '10px' }}>{item.icon}</span>
+                                {/* 아이콘 영역의 너비를 고정하여 정렬을 맞춥니다 */}
+                                <span style={s.iconWrapper}>{item.icon}</span>
                                 {item.name}
                             </Link>
                         );
                     })}
                 </nav>
 
-                {/* 🛠️ 하단 버튼 영역 수정 */}
                 <div style={s.footer}>
                     <Link to="/" style={s.homeBtn}>
                         🏠 사용자 홈으로
@@ -81,20 +82,52 @@ const s: Record<string, React.CSSProperties> = {
         height: '100vh',
         zIndex: 100
     },
-    logoSection: { padding: '40px 30px', textAlign: 'center' },
-    logo: { fontSize: '24px', fontWeight: 900, color: '#4C1D95', margin: 0 },
-    subLogo: { fontSize: '12px', color: '#9CA3AF', fontWeight: 700, marginTop: '5px' },
-    nav: { flex: 1, padding: '0 20px', display: 'flex', flexDirection: 'column', gap: '8px' },
+    logoSection: {
+        padding: '40px 20px 30px',
+        textAlign: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center'
+    },
+    logoImg: {
+        width: '120px',
+        height: 'auto',
+        marginBottom: '8px',
+        display: 'block'
+    },
+    subLogo: {
+        fontSize: '11px',
+        color: '#9CA3AF',
+        fontWeight: 700,
+        letterSpacing: '1.5px',
+        textTransform: 'uppercase'
+    },
+    // 🛠️ nav 스타일 강화 (세로 정렬 강제)
+    nav: {
+        flex: 1,
+        padding: '0 15px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '4px'
+    },
     navLink: {
         display: 'flex',
         alignItems: 'center',
-        padding: '14px 20px',
-        borderRadius: '15px',
+        padding: '12px 15px',
+        borderRadius: '12px',
         textDecoration: 'none',
         fontSize: '15px',
-        transition: 'all 0.2s'
+        transition: 'all 0.2s',
+        boxSizing: 'border-box'
     },
-    // ⭐ Footer 스타일 수정: 버튼 간격 조정
+    // 🛠️ 아이콘 간격 고정 스타일
+    iconWrapper: {
+        marginRight: '12px',
+        fontSize: '18px',
+        display: 'inline-flex',
+        width: '24px',
+        justifyContent: 'center'
+    },
     footer: {
         padding: '20px',
         borderTop: '1px solid #F3F4F6',
@@ -102,7 +135,6 @@ const s: Record<string, React.CSSProperties> = {
         flexDirection: 'column',
         gap: '10px'
     },
-    // ⭐ 홈으로 가기 버튼 스타일 추가
     homeBtn: {
         display: 'block',
         textAlign: 'center',
