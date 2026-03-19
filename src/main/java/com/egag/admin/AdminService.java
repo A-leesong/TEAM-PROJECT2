@@ -16,8 +16,8 @@ public class AdminService {
     private final AdminActionLogRepository logRepository; // 생성 필요
 
     @Transactional
-    public void giveManualToken(String adminId, Long userId, Integer amount, String reason) {
-        // 1. 대상 유저 조회
+    public void giveManualToken(String adminId, String userId, Integer amount, String reason) {
+        // userId가 String 타입일 경우
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
 

@@ -10,6 +10,12 @@ import PasswordResetConfirm from './pages/PasswordResetConfirm'
 import OAuthCallback from './pages/OAuthCallback'
 import Policy from './pages/Policy'
 
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminUserManagement from './pages/admin/AdminUserManagement';
+import UserManagement from './pages/admin/UserManagement';
+import PaymentManagement from './pages/admin/PaymentManagement';
+import AdminSidebar from './pages/admin/AdminSidebar';
+
 function App() {
   return (
     <Routes>
@@ -39,7 +45,15 @@ function App() {
       <Route path="/payment/fail" element={<div>Payment Fail</div>} />
         <Route path="/terms" element={<Policy type="TERMS" />} />
         <Route path="/privacy" element={<Policy type="PRIVACY" />} />
-      <Route path="/admin" element={<div>Admin</div>} />
+        {/* --- 🛡️ 어드민 전용 레이아웃 영역 --- */}
+        <Route path="/admin" element={<AdminSidebar />}>
+            {/* /admin 접속 시 바로 대시보드로 리다이렉트하거나 첫 페이지 설정 */}
+            <Route index element={<AdminDashboard />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="users" element={<AdminUserManagement />} />
+            <Route path="all-users" element={<UserManagement />} />
+            <Route path="payments" element={<PaymentManagement />} />
+        </Route>
       <Route path="*" element={<div>404 Not Found</div>} />
     </Routes>
   )

@@ -37,7 +37,7 @@ export default function Login() {
     try {
       const res = await login(email, password)
       if (res.refreshToken) localStorage.setItem('refreshToken', res.refreshToken)
-      setAuth(res.userId, res.nickname, res.tokenBalance, res.accessToken)
+      setAuth(res.userId, res.nickname, res.role, res.tokenBalance, res.accessToken);
       navigate('/')
     } catch (err: any) {
       const code = err.response?.data?.error?.code

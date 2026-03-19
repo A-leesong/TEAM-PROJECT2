@@ -76,4 +76,12 @@ public class User {
     public enum Role {
         USER, ADMIN
     }
+
+    // User.java 파일 내부 적당한 위치에 추가
+    public void addToken(Integer amount) {
+        if (this.tokenBalance == null) {
+            this.tokenBalance = 0;
+        }
+        this.tokenBalance += amount;
+    }
 }

@@ -1,7 +1,9 @@
 // com.egag.admin.AdminController.java
 package com.egag.admin;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,8 +32,10 @@ public class AdminController {
 }
 
 // DTO 객체
+@Getter
+@Setter
 class TokenRequest {
-    private Long userId;
+    private String userId;
     private Integer amount;
     private String reason;
     // Getter, Setter 생략

@@ -36,6 +36,7 @@ export interface UserResponse {
 export interface AuthResponse {
   accessToken: string
   refreshToken: string
+  role: string;
   userId: string
   nickname: string
   tokenBalance: number
