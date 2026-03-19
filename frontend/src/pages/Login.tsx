@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { login } from '../api/auth'
 import { useAuthStore } from '../stores/useAuthStore'
@@ -27,33 +27,79 @@ export default function Login() {
     return e
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const errs = validate()
-    if (Object.keys(errs).length > 0) { setErrors(errs); return }
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const errs = validate();
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      return;
+    }
 
-    setLoading(true)
-    setErrors({})
+    setLoading(true);
+    setErrors({});
+
     try {
-      const res = await login(email, password)
-      if (res.refreshToken) localStorage.setItem('refreshToken', res.refreshToken)
-      setAuth(res.userId, res.nickname, res.role, res.tokenBalance, res.accessToken);
-      navigate('/')
-    } catch (err: any) {
-      const code = err.response?.data?.error?.code
-      if (err.response?.status === 401 || code === 'INVALID_CREDENTIALS') {
-        setErrors({ general: '이메일 또는 비밀번호가 올바르지 않습니다.' })
-      } else if (code === 'USER_SUSPENDED') {
-        setErrors({ general: '정지된 계정입니다. 고객센터에 문의해주세요.' })
-      } else if (err.response?.status === 429) {
-        setErrors({ general: '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.' })
+      // 1. 변수 선언은 한 번만! 'unknown'을 거쳐 'Record<string, unknown>'으로 안전하게 변환
+      const res = (await login(email, password) as unknown) as Record<string, unknown>;
+
+      // 🔍 [데이터 확인용] 알림창으로 서버가 주는 진짜 키(Key) 이름을 확인하세요.
+      alert("서버 응답 데이터: " + JSON.stringify(res));
+      console.log("서버 응답 원본:", res);
+
+      // 리프레시 토큰 처리
+      const refreshToken = res.refreshToken as string | undefined;
+      if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
+
+      // 데이터 추출 (res 내부에 user 객체가 있거나 res 자체가 데이터인 경우 모두 대응)
+      const userData = (res.user || res) as Record<string, unknown>;
+
+      const userId = String(userData.userId || userData.id || '');
+      const nickname = String(userData.nickname || '');
+
+      // 💡 여기서 'role'이 안 잡힌다면 alert 창에서 본 이름을 userData.role || userData.이름 으로 넣어주세요.
+      const role = String(userData.role || '');
+      const tokenBalance = Number(userData.tokenBalance ?? 0);
+      const accessToken = String(res.accessToken || userData.accessToken || '');
+
+      // Zustand 스토어에 저장
+      setAuth(userId, nickname, role, tokenBalance, accessToken);
+
+      // --- 🛡️ 이동 로직 ---
+      if (role === '100' || role === 'ADMIN') {
+        console.log("✅ 관리자 확인: 대시보드로 이동");
+        navigate('/admin/dashboard');
       } else {
-        setErrors({ general: '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' })
+        console.log("✅ 일반 유저 확인: 홈으로 이동");
+        navigate('/');
+      }
+
+    } catch (err: unknown) {
+      console.error("로그인 에러 상세:", err);
+
+      interface ApiError {
+        response?: {
+          data?: { error?: { code?: string } };
+          status?: number;
+        };
+      }
+
+      const error = err as ApiError;
+      const code = error.response?.data?.error?.code;
+      const status = error.response?.status;
+
+      if (status === 401 || code === 'INVALID_CREDENTIALS') {
+        setErrors({ general: '이메일 또는 비밀번호가 올바르지 않습니다.' });
+      } else if (code === 'USER_SUSPENDED') {
+        setErrors({ general: '정지된 계정입니다. 고객센터에 문의해주세요.' });
+      } else if (status === 429) {
+        setErrors({ general: '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.' });
+      } else {
+        setErrors({ general: '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' });
       }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div style={s.bg}>

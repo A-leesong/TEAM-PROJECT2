@@ -2,21 +2,24 @@ import { Link, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/useAuthStore';
 
 const AdminSidebar = () => {
-    const { isAuthenticated, role, logout } = useAuthStore();
-    const location = useLocation();
+    const location = useLocation(); // ⭐ 추가: 현재 경로 확인용
+    const { isAuthenticated, role, accessToken, logout } = useAuthStore(); // ⭐ 추가: logout 가져오기
 
-    // 🛡️ 보안 체크: 관리자가 아니면 아예 접근 불가
+    // 관리자 조건 체크 (DB 값이 100 또는 'ADMIN')
+    const isAdmin = role === 'ADMIN' || String(role) === '100';
+
     console.log("--- 어드민 체크 ---");
-    console.log("인증여부(isAuthenticated):", isAuthenticated);
-    console.log("내 역할(role):", role);
-    console.log("토큰(accessToken):", accessToken);
+    console.log("인증여부:", isAuthenticated);
+    console.log("내 역할:", role);
+    console.log("토큰 존재여부:", !!accessToken);
 
-    if (!isAuthenticated || role !== 'ADMIN') {
-        console.error("❌ 조건 불일치로 홈으로 튕깁니다!");
+    // 1. 권한이 없으면 홈으로 보냄
+    if (!isAuthenticated || !isAdmin) {
+        console.error("❌ 권한이 없거나 로그인되지 않았습니다.");
         return <Navigate to="/" replace />;
     }
 
-    // 메뉴 아이템 설정
+    // 2. 메뉴 아이템 설정
     const menuItems = [
         { path: '/admin/dashboard', name: '📊 대시보드', icon: '📈' },
         { path: '/admin/users', name: '👥 유저 관리', icon: '👤' },
@@ -24,6 +27,7 @@ const AdminSidebar = () => {
         { path: '/admin/all-users', name: '📋 전체 목록', icon: '🗂️' },
     ];
 
+    // 3. 실제 화면 렌더링
     return (
         <div style={s.layout}>
             {/* ⬅️ 사이드바 영역 */}
@@ -107,7 +111,7 @@ const s: Record<string, React.CSSProperties> = {
     },
     mainContent: {
         flex: 1,
-        marginLeft: '260px', // 사이드바 너비만큼 왼쪽 여백
+        marginLeft: '260px',
         padding: '20px',
         minHeight: '100vh'
     }

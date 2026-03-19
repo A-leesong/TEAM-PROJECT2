@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { signup } from '../api/auth'
@@ -103,21 +104,28 @@ export default function Signup() {
         email: form.email, phone: form.phone, password: form.password,
       })
       if (res.refreshToken) localStorage.setItem('refreshToken', res.refreshToken)
-      setAuth(res.userId, res.nickname, res.tokenBalance, res.accessToken)
+      setAuth(res.userId, res.nickname, res.role, res.tokenBalance, res.accessToken);
       navigate('/')
-    } catch (err: any) {
-      const code = err.response?.data?.error?.code ?? ''
-      if (code === 'EMAIL_DUPLICATED') {
-        setErrors({ email: '이미 사용 중인 이메일입니다.' })
-      } else if (code === 'NICKNAME_DUPLICATED') {
-        setErrors({ nickname: '이미 사용 중인 별명입니다.' })
+    } catch (err: unknown) {
+      // ✅ Axios 에러인지 확인하여 any 제거
+      if (axios.isAxiosError(err)) {
+        const code = err.response?.data?.error?.code ?? '';
+
+        if (code === 'EMAIL_DUPLICATED') {
+          setErrors({ email: '이미 사용 중인 이메일입니다.' });
+        } else if (code === 'NICKNAME_DUPLICATED') {
+          setErrors({ nickname: '이미 사용 중인 별명입니다.' });
+        } else {
+          setErrors({ general: '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' });
+        }
       } else {
-        setErrors({ general: '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' })
+        // Axios 에러가 아닌 일반 에러 처리
+        setErrors({ general: '네트워크 연결을 확인해주세요.' });
       }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div style={s.bg}>

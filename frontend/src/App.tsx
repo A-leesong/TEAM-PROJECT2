@@ -19,49 +19,58 @@ import PaymentManagement from './pages/admin/PaymentManagement';
 import AdminSidebar from './pages/admin/AdminSidebar';
 
 function App() {
-  return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/canvas" element={<Canvas />} />
-      <Route path="/canvas/:id" element={<Canvas />} />
-      <Route path="/decalcomania" element={<Decalcomania />} />
-      <Route path="/decalcomania/:id" element={<Decalcomania />} />
-      <Route path="/gallery" element={<div>Gallery</div>} />
-      <Route path="/explore" element={<div>Explore</div>} />
-      <Route path="/artwork/:id" element={<div>Artwork Detail</div>} />
-      <Route path="/user/:id" element={<div>User Profile</div>} />
-      <Route path="/search" element={<div>Search</div>} />
-      <Route path="/notifications" element={<div>Notifications</div>} />
-      <Route path="/pricing" element={<div>Pricing</div>} />
-      <Route path="/billing" element={<div>Billing</div>} />
-      <Route path="/profile" element={<div>Profile</div>} />
-        <Route path="/contact" element={<Inquiry />} />
-      <Route path="/password-reset" element={<div>Password Reset</div>} />
-      <Route path="/contact" element={<div>Contact</div>} />
-      <Route path="/password-reset" element={<PasswordReset />} />
-      <Route path="/password-reset/confirm" element={<PasswordResetConfirm />} />
-      <Route path="/oauth/callback" element={<OAuthCallback />} />
-      <Route path="/payment/success" element={<div>Payment Success</div>} />
-      <Route path="/payment/fail" element={<div>Payment Fail</div>} />
-        <Route path="/terms" element={<Policy type="TERMS" />} />
-        <Route path="/privacy" element={<Policy type="PRIVACY" />} />
-        {/* --- 🛡️ 어드민 전용 레이아웃 영역 --- */}
-        <Route path="/admin" element={<AdminSidebar />}>
-            {/* /admin 접속 시 바로 대시보드로 리다이렉트하거나 첫 페이지 설정 */}
-            <Route index element={<AdminDashboard />} />
-            <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="users" element={<AdminUserManagement />} />
-            <Route path="all-users" element={<UserManagement />} />
-            <Route path="payments" element={<PaymentManagement />} />
-        </Route>
-      <Route path="/token-shop" element={<TokenShop />} />
-      <Route path="/mypage" element={<MyPage />} />
-      <Route path="/admin" element={<div>Admin</div>} />
-      <Route path="*" element={<div>404 Not Found</div>} />
-    </Routes>
-  )
+    return (
+        <Routes>
+            {/* --- 일반 사용자 페이지 --- */}
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/canvas" element={<Canvas />} />
+            <Route path="/canvas/:id" element={<Canvas />} />
+            <Route path="/decalcomania" element={<Decalcomania />} />
+            <Route path="/decalcomania/:id" element={<Decalcomania />} />
+
+            {/* 준비 중인 페이지들 */}
+            <Route path="/gallery" element={<div>Gallery</div>} />
+            <Route path="/explore" element={<div>Explore</div>} />
+            <Route path="/artwork/:id" element={<div>Artwork Detail</div>} />
+            <Route path="/user/:id" element={<div>User Profile</div>} />
+            <Route path="/search" element={<div>Search</div>} />
+            <Route path="/notifications" element={<div>Notifications</div>} />
+            <Route path="/pricing" element={<div>Pricing</div>} />
+            <Route path="/billing" element={<div>Billing</div>} />
+            <Route path="/profile" element={<div>Profile</div>} />
+
+            {/* 고객지원 및 약관 */}
+            <Route path="/contact" element={<Inquiry />} />
+            <Route path="/password-reset" element={<PasswordReset />} />
+            <Route path="/password-reset/confirm" element={<PasswordResetConfirm />} />
+            <Route path="/terms" element={<Policy type="TERMS" />} />
+            <Route path="/privacy" element={<Policy type="PRIVACY" />} />
+
+            {/* 결제 및 계정 */}
+            <Route path="/oauth/callback" element={<OAuthCallback />} />
+            <Route path="/payment/success" element={<div>Payment Success</div>} />
+            <Route path="/payment/fail" element={<div>Payment Fail</div>} />
+            <Route path="/token-shop" element={<TokenShop />} />
+            <Route path="/mypage" element={<MyPage />} />
+
+            {/* --- 🛡️ 어드민 영역 --- */}
+            <Route path="/admin" element={<AdminSidebar />}>
+                {/* 1. localhost:3000/admin 접속 시 자동으로 대시보드 표시 */}
+                <Route index element={<AdminDashboard />} />
+                {/* 2. localhost:3000/admin/dashboard 접속 시 대시보드 표시 */}
+                <Route path="dashboard" element={<AdminDashboard />} />
+                {/* 3. 기타 관리 페이지들 (앞에 /를 붙이지 마세요!) */}
+                <Route path="users" element={<AdminUserManagement />} />
+                <Route path="all-users" element={<UserManagement />} />
+                <Route path="payments" element={<PaymentManagement />} />
+            </Route>
+
+            {/* 404 페이지 */}
+            <Route path="*" element={<div>404 Not Found</div>} />
+        </Routes>
+    )
 }
 
 export default App
