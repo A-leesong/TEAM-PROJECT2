@@ -3,6 +3,8 @@ package com.egag.auth;
 import com.egag.common.domain.User;
 import com.egag.common.domain.UserRepository;
 import com.egag.common.exception.CustomException;
+import com.egag.payment.TokenLog; // ✅ 패키지 경로 확인 필요
+import com.egag.payment.TokenLogRepository; // ✅ 패키지 경로 확인 필요
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -28,6 +30,7 @@ public class AuthService implements UserDetailsService {
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final TokenLogRepository tokenLogRepository; // 🌟 추가: 토큰 로그 저장을 위한 의존성 주입
 
     @Value("${jwt.refresh-expiration}")
     private long refreshTokenExpiration; // 밀리초 단위 (예: 604800000 = 7일)
@@ -59,14 +62,15 @@ public class AuthService implements UserDetailsService {
         }
 
         String nickname = request.getNickname();
-        if (nickname.length() > 12) {
+        if (nickname != null && nickname.length() > 12) {
             nickname = nickname.substring(0, 12);
         }
 
-        if (userRepository.existsByNickname(nickname)) {
+        if (nickname != null && userRepository.existsByNickname(nickname)) {
             throw new IllegalArgumentException("이미 사용 중인 별명입니다.");
         }
 
+        // 🌟 1. 유저 생성 시 토큰 3개 기본 지급 및 역할 설정
         User user = User.builder()
                 .id(UUID.randomUUID().toString())
                 .email(request.getEmail())
@@ -74,10 +78,24 @@ public class AuthService implements UserDetailsService {
                 .phone(request.getPhone())
                 .nickname(nickname)
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .tokenBalance(3) // 기본 토큰 지급
+                .role("USER")    // 기본 역할 명시
                 .build();
 
-        userRepository.save(user);
-        return generateTokenPair(user);
+        User savedUser = userRepository.save(user);
+
+        // 🌟 2. 가입 즉시 변동 이력(TokenLog) 저장 (어드민 대시보드 표시용)
+        tokenLogRepository.save(TokenLog.builder()
+                .id(UUID.randomUUID().toString())
+                .user(savedUser)
+                .amount(3)
+                .balanceAfter(3)
+                .type("WELCOME")
+                .reason("신규 가입 축하 토큰 3개 자동 지급")
+                .createdAt(LocalDateTime.now())
+                .build());
+
+        return generateTokenPair(savedUser);
     }
 
     // ─────────────────────────────────────────
@@ -116,7 +134,6 @@ public class AuthService implements UserDetailsService {
         refreshTokenRepository.save(refreshToken);
 
         User u = refreshToken.getUser();
-        // ✅ 생성자 파라미터에 u.getRole() 추가
         return new TokenResponse(newAccessToken, refreshToken.getToken(),
                 u.getId(), u.getNickname(), u.getRole(), u.getTokenBalance(), false);
     }
@@ -138,27 +155,23 @@ public class AuthService implements UserDetailsService {
 
     @Transactional
     public void requestPasswordReset(PasswordResetRequest request) {
-        // 이메일로 사용자 조회
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new CustomException(
                         HttpStatus.NOT_FOUND, "USER_NOT_FOUND",
                         "입력하신 이메일로 가입된 계정이 없습니다."));
 
-        // 이름 검증
         if (!user.getName().equals(request.getName())) {
             throw new CustomException(
                     HttpStatus.BAD_REQUEST, "NAME_MISMATCH",
                     "입력하신 이름이 계정 정보와 일치하지 않습니다.");
         }
 
-        // 별명 검증
         if (!user.getNickname().equals(request.getNickname())) {
             throw new CustomException(
                     HttpStatus.BAD_REQUEST, "NICKNAME_MISMATCH",
                     "입력하신 별명이 계정 정보와 일치하지 않습니다.");
         }
 
-        // 기존 토큰 삭제 후 새 토큰 생성 (30분 유효)
         passwordResetTokenRepository.deleteByUser(user);
         String token = UUID.randomUUID().toString();
         passwordResetTokenRepository.save(
@@ -168,7 +181,6 @@ public class AuthService implements UserDetailsService {
                         .expiryDate(LocalDateTime.now().plusMinutes(30))
                         .build());
 
-        // 이메일 발송 (subEmail 우선, 없으면 기본 email)
         String sendTo = (user.getSubEmail() != null && !user.getSubEmail().isBlank())
                 ? user.getSubEmail() : user.getEmail();
         emailService.sendPasswordResetEmail(sendTo, user.getNickname(), token);
@@ -227,7 +239,6 @@ public class AuthService implements UserDetailsService {
         refreshToken.setExpiryDate(Instant.now().plusMillis(refreshTokenExpiration));
         refreshTokenRepository.save(refreshToken);
 
-        // ✅ 생성자 파라미터에 user.getRole() 추가
         return new TokenResponse(accessToken, refreshToken.getToken(),
                 user.getId(), user.getNickname(), user.getRole(), user.getTokenBalance(), false);
     }

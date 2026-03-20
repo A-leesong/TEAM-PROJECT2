@@ -15,20 +15,7 @@ public class AdminDashboardStatsResponse {
     private long suspendedUsers;
     private long activeUsers;
 
-    // ✅ 차트용 데이터 필드 추가!
+    // ✅ 외부 파일로 만든 클래스들을 리스트로 선언
     private List<ProductStat> topProducts;
     private List<PaymentStat> paymentMethodRatio;
-
-    // 내부 클래스로 데이터 구조 정의 (따로 파일을 만드셔도 됩니다)
-    @Getter @Builder @AllArgsConstructor @NoArgsConstructor
-    public static class ProductStat {
-        private String name;
-        private long count;
-    }
-
-    @Getter @Builder @AllArgsConstructor @NoArgsConstructor
-    public static class PaymentStat {
-        private String name;
-        private long value;
-    }
 }

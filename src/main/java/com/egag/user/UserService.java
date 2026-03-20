@@ -1,5 +1,7 @@
 package com.egag.user;
 
+import com.egag.payment.TokenLog; // 💡 실제 TokenLog 엔티티 위치에 맞춰 임포트하세요
+import com.egag.payment.TokenLogRepository; // 💡 실제 Repository 위치에 맞춰 임포트하세요
 import com.egag.common.domain.ArtworkRepository;
 import com.egag.common.domain.User;
 import com.egag.common.domain.UserRepository;
@@ -14,6 +16,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -26,6 +29,7 @@ public class UserService {
     private final ArtworkRepository artworkRepository;
     private final FollowRepository followRepository;
     private final PasswordEncoder passwordEncoder;
+    private final TokenLogRepository tokenLogRepository; // 🌟 추가: 토큰 로그 저장을 위한 의존성 주입
 
     @Value("${app.upload-dir:uploads/profiles}")
     private String uploadDir;
@@ -70,6 +74,9 @@ public class UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
+        // 🌟 최초 온보딩 여부 확인 (닉네임이 아직 없는 경우를 최초 가입자로 판단)
+        boolean isFirstOnboarding = (user.getNickname() == null || user.getNickname().isBlank());
+
         if (req.getName() != null && !req.getName().isBlank()) {
             user.setName(req.getName());
         }
@@ -83,13 +90,31 @@ public class UserService {
             }
             user.setNickname(req.getNickname());
         }
-        // 온보딩 이메일은 subEmail에 저장 (인증용 email은 변경하지 않음)
+
         if (req.getEmail() != null && !req.getEmail().isBlank()
                 && !req.getEmail().equals(user.getSubEmail())) {
             if (userRepository.existsBySubEmail(req.getEmail())) {
                 throw new RuntimeException("이미 사용 중인 이메일입니다.");
             }
             user.setSubEmail(req.getEmail());
+        }
+
+        // 🌟 최초 가입 시에만 토큰 3개 지급 및 로그 저장
+        if (isFirstOnboarding) {
+            user.setTokenBalance(3);
+            userRepository.save(user);
+
+            TokenLog welcomeLog = TokenLog.builder()
+                    .id(UUID.randomUUID().toString())
+                    .user(user)
+                    .amount(3)
+                    .balanceAfter(user.getTokenBalance())
+                    .type("WELCOME")
+                    .reason("신규 가입 축하 토큰 3개 자동 지급")
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            tokenLogRepository.save(welcomeLog);
         }
 
         return new UserProfileResponse(userRepository.save(user));
