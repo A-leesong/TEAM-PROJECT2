@@ -647,10 +647,6 @@ export default function Decalcomania() {
                 <div style={{ height: 340, borderRadius: 16, overflow: 'hidden', border: '1.5px solid rgba(186,230,255,0.5)', background: '#fff' }}>
                   <img src={`data:image/png;base64,${canvasBase64}`} alt="내가 그린 그림" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
                 </div>
-                <a href={`data:image/png;base64,${canvasBase64}`} download="my-drawing.png" className="deco-soft"
-                  style={{ display: 'block', textAlign: 'center', padding: '9px 0', borderRadius: 10, border: '1.5px solid rgba(186,230,255,0.5)', background: 'white', fontSize: 13, fontWeight: 600, color: '#0ea5e9', cursor: 'pointer', textDecoration: 'none', transition: 'box-shadow 0.2s, transform 0.15s' }}>
-                  내 그림 저장
-                </a>
               </div>
 
               {/* AI 그림 */}
@@ -692,9 +688,13 @@ export default function Decalcomania() {
             </div>
 
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={handleReset} className="deco-soft"
+              <button onClick={() => navigate('/')} className="deco-soft"
                 style={{ flex: 1, padding: '12px 0', borderRadius: 14, border: '1.5px solid rgba(186,230,255,0.5)', background: 'white', color: '#0ea5e9', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                다시 그리기
+                홈으로
+              </button>
+              <button onClick={() => navigate('/mypage')} className="deco-soft"
+                style={{ flex: 1, padding: '12px 0', borderRadius: 14, border: '1.5px solid rgba(186,230,255,0.5)', background: 'white', color: '#0ea5e9', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                내 갤러리로 이동
               </button>
               <button
                 onClick={async () => {
@@ -704,27 +704,25 @@ export default function Decalcomania() {
                     await saveArtworkToGallery(result.imageUrl, `data:image/png;base64,${canvasBase64}`, result.style, 'decalcomania')
                     setSavedToGallery(true)
                   } catch {
-                    // 실패 시 조용히 처리
+                    alert('저장에 실패했습니다. 다시 시도해주세요.')
                   } finally {
                     setSavingToGallery(false)
                   }
                 }}
-                className="deco-soft"
+                className="deco-glow"
                 style={{
-                  flex: 1, padding: '12px 0', borderRadius: 14,
-                  border: '1.5px solid rgba(186,230,255,0.5)',
-                  background: savedToGallery ? '#f0f9ff' : 'white',
-                  color: savedToGallery ? '#7dd3fc' : '#0ea5e9',
-                  fontSize: 14, fontWeight: 700, cursor: savedToGallery ? 'default' : 'pointer',
-                  opacity: savingToGallery ? 0.6 : 1,
+                  flex: 1, padding: '12px 0', borderRadius: 14, border: 'none',
+                  background: savedToGallery
+                    ? 'linear-gradient(135deg, #10b981, #059669)'
+                    : 'linear-gradient(135deg, #0ea5e9, #38bdf8)',
+                  color: 'white', fontSize: 14, fontWeight: 700,
+                  cursor: savedToGallery ? 'default' : 'pointer',
+                  boxShadow: '0 4px 12px rgba(14,165,233,0.3)',
+                  opacity: savingToGallery ? 0.7 : 1,
                 }}
                 disabled={savedToGallery || savingToGallery}
               >
-                {savingToGallery ? '저장 중...' : savedToGallery ? '✓ 갤러리에 저장됨' : '내 갤러리에 저장'}
-              </button>
-              <button onClick={() => navigate('/')} className="deco-glow"
-                style={{ flex: 1, padding: '12px 0', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg, #0ea5e9, #38bdf8)', color: 'white', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(14,165,233,0.3)' }}>
-                홈으로
+                {savedToGallery ? '저장 완료!' : savingToGallery ? '저장 중...' : '내 갤러리에 저장'}
               </button>
             </div>
           </div>

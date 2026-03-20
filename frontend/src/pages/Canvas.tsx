@@ -942,19 +942,6 @@ export default function Canvas() {
                     style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
                   />
                 </div>
-                <a
-                  href={`data:image/png;base64,${canvasBase64}`}
-                  download="my-drawing.png"
-                  style={{
-                    display: 'block', textAlign: 'center', padding: '9px 0',
-                    borderRadius: 10, border: '1.5px solid #ddd6fe', background: 'white',
-                    fontSize: 13, fontWeight: 600, color: '#7c3aed', cursor: 'pointer',
-                    textDecoration: 'none', transition: 'box-shadow 0.2s, transform 0.15s',
-                  }}
-                  className="btn-glow-soft"
-                >
-                  내 그림 저장
-                </a>
               </div>
 
               {/* AI가 그린 그림 */}
@@ -1018,7 +1005,7 @@ export default function Canvas() {
 
             <div style={{ display: 'flex', gap: 10 }}>
               <button
-                onClick={handleReset}
+                onClick={() => navigate('/')}
                 className="btn-glow-soft"
                 style={{
                   flex: 1, padding: '12px 0', borderRadius: 14,
@@ -1026,7 +1013,18 @@ export default function Canvas() {
                   color: '#7c3aed', fontSize: 14, fontWeight: 700, cursor: 'pointer',
                 }}
               >
-                다시 그리기
+                홈으로
+              </button>
+              <button
+                onClick={() => navigate('/mypage')}
+                className="btn-glow-soft"
+                style={{
+                  flex: 1, padding: '12px 0', borderRadius: 14,
+                  border: '1.5px solid #ddd6fe', background: 'white',
+                  color: '#7c3aed', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                내 갤러리로 이동
               </button>
               <button
                 onClick={async () => {
@@ -1036,35 +1034,24 @@ export default function Canvas() {
                     await saveArtworkToGallery(result.imageUrl, `data:image/png;base64,${canvasBase64}`, result.style, 'canvas')
                     setSavedToGallery(true)
                   } catch {
-                    // 실패 시 조용히 처리
+                    alert('저장에 실패했습니다. 다시 시도해주세요.')
                   } finally {
                     setSavingToGallery(false)
                   }
                 }}
-                className="btn-glow-soft"
-                style={{
-                  flex: 1, padding: '12px 0', borderRadius: 14,
-                  border: '1.5px solid #ddd6fe',
-                  background: savedToGallery ? '#f3f0ff' : 'white',
-                  color: savedToGallery ? '#a78bfa' : '#7c3aed',
-                  fontSize: 14, fontWeight: 700, cursor: savedToGallery ? 'default' : 'pointer',
-                  opacity: savingToGallery ? 0.6 : 1,
-                }}
-                disabled={savedToGallery || savingToGallery}
-              >
-                {savingToGallery ? '저장 중...' : savedToGallery ? '✓ 갤러리에 저장됨' : '내 갤러리에 저장'}
-              </button>
-              <button
-                onClick={() => navigate('/')}
                 className="btn-glow"
                 style={{
                   flex: 1, padding: '12px 0', borderRadius: 14, border: 'none',
-                  background: 'linear-gradient(135deg, #7c3aed, #ec4899)',
-                  color: 'white', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                  background: savedToGallery
+                    ? 'linear-gradient(135deg, #10b981, #059669)'
+                    : 'linear-gradient(135deg, #7c3aed, #ec4899)',
+                  color: 'white', fontSize: 14, fontWeight: 700, cursor: savedToGallery ? 'default' : 'pointer',
                   boxShadow: '0 4px 12px rgba(124,58,237,0.3)',
+                  opacity: savingToGallery ? 0.7 : 1,
                 }}
+                disabled={savedToGallery || savingToGallery}
               >
-                홈으로
+                {savedToGallery ? '저장 완료!' : savingToGallery ? '저장 중...' : '내 갤러리에 저장'}
               </button>
             </div>
           </div>
