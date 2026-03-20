@@ -956,30 +956,6 @@ export default function Canvas() {
                     style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                   />
                 </div>
-                <button
-                  onClick={async () => {
-                    try {
-                      const res = await fetch(result.imageUrl)
-                      const blob = await res.blob()
-                      const a = document.createElement('a')
-                      a.href = URL.createObjectURL(blob)
-                      a.download = 'ai-drawing.png'
-                      a.click()
-                      URL.revokeObjectURL(a.href)
-                    } catch {
-                      window.open(result.imageUrl, '_blank')
-                    }
-                  }}
-                  style={{
-                    display: 'block', width: '100%', textAlign: 'center', padding: '9px 0',
-                    borderRadius: 10, border: '1.5px solid #ddd6fe', background: 'white',
-                    fontSize: 13, fontWeight: 600, color: '#7c3aed', cursor: 'pointer',
-                    transition: 'box-shadow 0.2s, transform 0.15s',
-                  }}
-                  className="btn-glow-soft"
-                >
-                  AI 그림 저장
-                </button>
               </div>
 
               {/* AI가 써준 동화 */}
