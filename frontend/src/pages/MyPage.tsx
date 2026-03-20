@@ -198,7 +198,7 @@ export default function MyPage() {
                   </button>
                   <button
                     style={{ ...s.secondaryBtn, flex: 1 }}
-                    onClick={() => { setShowEdit(v => !v); setEditMsg(''); setEditError('') }}
+                    onClick={() => navigate('/profile/edit')}
                   >
                     ✏️ 내 정보 변경
                   </button>
