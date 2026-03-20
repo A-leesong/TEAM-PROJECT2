@@ -2,7 +2,8 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Stage, Layer, Line, Rect, Image as KonvaImage } from 'react-konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
-import { identifyCanvas, transformCanvas, saveToGallery } from '../api/canvas'
+import { identifyCanvas, transformCanvas } from '../api/canvas'
+import { saveArtworkToGallery } from '../api/user'
 import { useAuthStore } from '../stores/useAuthStore'
 
 const COLORS = [
@@ -336,6 +337,7 @@ export default function Canvas() {
     setGuess(null)
     setConfirmedSubject('')
     setResult(null)
+    setSavedToGallery(false)
     setIsEraser(false)
     setIsBucket(false)
   }
@@ -1002,16 +1004,10 @@ export default function Canvas() {
               </button>
               <button
                 onClick={async () => {
-                  if (savingToGallery || savedToGallery) return
+                  if (savedToGallery || savingToGallery || !result) return
                   setSavingToGallery(true)
                   try {
-                    await saveToGallery({
-                      aiImageUrl: result.imageUrl,
-                      style: result.style,
-                      story: result.story,
-                      subject: confirmedSubject,
-                      type: 'CANVAS',
-                    })
+                    await saveArtworkToGallery(result.imageUrl, `data:image/png;base64,${canvasBase64}`, result.style, 'canvas')
                     setSavedToGallery(true)
                   } catch {
                     alert('저장에 실패했습니다. 다시 시도해주세요.')
@@ -1029,6 +1025,7 @@ export default function Canvas() {
                   boxShadow: '0 4px 12px rgba(124,58,237,0.3)',
                   opacity: savingToGallery ? 0.7 : 1,
                 }}
+                disabled={savedToGallery || savingToGallery}
               >
                 {savedToGallery ? '저장 완료!' : savingToGallery ? '저장 중...' : '내 갤러리에 저장'}
               </button>

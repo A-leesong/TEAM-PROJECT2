@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Stage, Layer, Line, Rect, Image as KonvaImage, Group } from 'react-konva'
 import type Konva from 'konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
-import { startSession, identifyCanvas, transformCanvas, saveToGallery } from '../api/canvas'
+import { startSession, identifyCanvas, transformCanvas } from '../api/canvas'
+import { saveArtworkToGallery } from '../api/user'
 import { useAuthStore } from '../stores/useAuthStore'
 import { Palette, FlipHorizontal2 } from 'lucide-react'
 
@@ -302,7 +303,7 @@ export default function Decalcomania() {
   const handleReset = () => {
     setHistory([{ strokes: [], fill: null }]); setHistoryIndex(0); setCurrentPoints([])
     setMirroredStrokes([]); setGuess(null); setConfirmedSubject('')
-    setResult(null); setIsEraser(false); setIsBucket(false); setPhase('drawing')
+    setResult(null); setSavedToGallery(false); setIsEraser(false); setIsBucket(false); setPhase('drawing')
   }
 
   const canDraw = phase === 'drawing'
@@ -678,16 +679,10 @@ export default function Decalcomania() {
               </button>
               <button
                 onClick={async () => {
-                  if (savingToGallery || savedToGallery) return
+                  if (savedToGallery || savingToGallery || !result) return
                   setSavingToGallery(true)
                   try {
-                    await saveToGallery({
-                      aiImageUrl: result.imageUrl,
-                      style: result.style,
-                      story: result.story,
-                      subject: confirmedSubject,
-                      type: 'DECALCOMANIA',
-                    })
+                    await saveArtworkToGallery(result.imageUrl, `data:image/png;base64,${canvasBase64}`, result.style, 'decalcomania')
                     setSavedToGallery(true)
                   } catch {
                     alert('저장에 실패했습니다. 다시 시도해주세요.')
@@ -705,7 +700,9 @@ export default function Decalcomania() {
                   cursor: savedToGallery ? 'default' : 'pointer',
                   boxShadow: '0 4px 12px rgba(14,165,233,0.3)',
                   opacity: savingToGallery ? 0.7 : 1,
-                }}>
+                }}
+                disabled={savedToGallery || savingToGallery}
+              >
                 {savedToGallery ? '저장 완료!' : savingToGallery ? '저장 중...' : '내 갤러리에 저장'}
               </button>
             </div>
