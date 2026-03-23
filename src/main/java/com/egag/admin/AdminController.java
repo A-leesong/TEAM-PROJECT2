@@ -2,12 +2,15 @@ package com.egag.admin;
 
 import com.egag.admin.dto.AdminDashboardStatsResponse;
 import com.egag.admin.dto.TokenRequest;
+import com.egag.common.domain.ArtworkRepository;
 import com.egag.common.domain.UserRepository;
+import com.egag.inquiry.InquiryRepository;
 import lombok.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.util.List;
-import java.util.Collections;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -16,6 +19,8 @@ public class AdminController {
 
     private final AdminService adminService;
     private final UserRepository userRepository;
+    private final InquiryRepository inquiryRepository;
+    private final ArtworkRepository artworkRepository;
 
     // 📊 1. 대시보드 통계 데이터 API (진짜 데이터 연동)
     @GetMapping("/dashboard/stats")
@@ -74,5 +79,28 @@ public class AdminController {
     public ResponseEntity<String> cancelPayment(@PathVariable String id) {
         System.out.println("결제 취소 요청 처리 중 - ID: " + id);
         return ResponseEntity.ok("결제(ID: " + id + ") 취소 처리가 완료되었습니다.");
+    }
+
+    // 📊 8. 문의 카테고리별 접수 수
+    @GetMapping("/stats/inquiry-categories")
+    public ResponseEntity<Map<String, Long>> getInquiryCategoryStats() {
+        List<Object[]> rows = inquiryRepository.countByCategory();
+        Map<String, Long> result = rows.stream()
+                .collect(Collectors.toMap(r -> (String) r[0], r -> (Long) r[1]));
+        return ResponseEntity.ok(result);
+    }
+
+    // 📈 9. 날짜별 이미지 생성 수 (최근 14일)
+    @GetMapping("/stats/artwork-by-date")
+    public ResponseEntity<List<Map<String, Object>>> getArtworkByDate() {
+        LocalDateTime since = LocalDateTime.now().minusDays(14).withHour(0).withMinute(0).withSecond(0).withNano(0);
+        List<Object[]> rows = artworkRepository.countByDateSince(since);
+        List<Map<String, Object>> result = rows.stream().map(r -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("date", r[0].toString());
+            m.put("count", ((Number) r[1]).longValue());
+            return m;
+        }).collect(Collectors.toList());
+        return ResponseEntity.ok(result);
     }
 }

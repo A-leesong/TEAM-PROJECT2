@@ -1,7 +1,10 @@
 package com.egag.common.domain;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface ArtworkRepository extends JpaRepository<Artwork, String> {
@@ -13,4 +16,8 @@ public interface ArtworkRepository extends JpaRepository<Artwork, String> {
     List<Artwork> findByIsPublicTrueOrderByCreatedAtDesc();
     List<Artwork> findByIsPublicTrueOrderByLikeCountDesc();
     List<Artwork> findByTitleContainingIgnoreCaseAndIsPublicTrue(String title);
+
+    // 날짜별 이미지 생성 수 (최근 N일)
+    @Query(value = "SELECT DATE(created_at) as date, COUNT(*) as count FROM artworks WHERE created_at >= :since GROUP BY DATE(created_at) ORDER BY DATE(created_at)", nativeQuery = true)
+    List<Object[]> countByDateSince(@Param("since") LocalDateTime since);
 }

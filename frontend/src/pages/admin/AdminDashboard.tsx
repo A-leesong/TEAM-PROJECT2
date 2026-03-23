@@ -2,6 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/useAuthStore';
+import {
+    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+    LineChart, Line
+} from 'recharts';
 
 interface PendingInquiry {
     id: string;
@@ -26,6 +30,9 @@ const CATEGORY_LABELS: Record<string, string> = {
     payment: '결제', account: '계정', bug: '버그', etc: '기타',
 };
 
+interface CategoryStat { name: string; count: number; }
+interface DateStat { date: string; count: number; }
+
 const AdminDashboard = () => {
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const role = useAuthStore((state) => state.role);
@@ -36,6 +43,8 @@ const AdminDashboard = () => {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [pendingInquiries, setPendingInquiries] = useState<PendingInquiry[]>([]);
+    const [categoryStats, setCategoryStats] = useState<CategoryStat[]>([]);
+    const [artworkByDate, setArtworkByDate] = useState<DateStat[]>([]);
     const [replyMap, setReplyMap] = useState<Record<string, string>>({});
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState<string | null>(null);
@@ -88,12 +97,30 @@ const AdminDashboard = () => {
         }
     };
 
+    const fetchChartData = useCallback(async () => {
+        const headers = { Authorization: `Bearer ${accessToken}` };
+        try {
+            const [catRes, dateRes] = await Promise.all([
+                axios.get('/api/admin/stats/inquiry-categories', { headers }),
+                axios.get('/api/admin/stats/artwork-by-date', { headers }),
+            ]);
+            const catData: CategoryStat[] = Object.entries(catRes.data as Record<string, number>).map(
+                ([key, count]) => ({ name: CATEGORY_LABELS[key] ?? key, count })
+            );
+            setCategoryStats(catData);
+            setArtworkByDate(dateRes.data);
+        } catch (e) {
+            console.error('차트 데이터 로딩 실패', e);
+        }
+    }, [accessToken]);
+
     useEffect(() => {
         if (isAuthenticated && role === 'ADMIN') {
             fetchStats();
             fetchPendingInquiries();
+            fetchChartData();
         }
-    }, [isAuthenticated, role, fetchStats, fetchPendingInquiries]);
+    }, [isAuthenticated, role, fetchStats, fetchPendingInquiries, fetchChartData]);
 
     if (!isAuthenticated || role !== 'ADMIN') {
         return <Navigate to="/" replace />;
@@ -141,6 +168,43 @@ const AdminDashboard = () => {
             ) : (
                 <div style={s.emptyState}>통계 데이터를 표시할 수 없습니다. 😥</div>
             )}
+
+            {/* 📊 차트 섹션 */}
+            <div style={s.chartGrid}>
+                <div style={s.chartCard}>
+                    <h3 style={s.chartTitle}>📂 문의 카테고리별 접수 현황</h3>
+                    {categoryStats.length === 0 ? (
+                        <div style={s.chartEmpty}>데이터 없음</div>
+                    ) : (
+                        <ResponsiveContainer width="100%" height={220}>
+                            <BarChart data={categoryStats} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                                <XAxis dataKey="name" tick={{ fontSize: 13, fill: '#6B7280' }} />
+                                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#9CA3AF' }} />
+                                <Tooltip formatter={(v) => [`${v}건`, '접수']} />
+                                <Bar dataKey="count" fill="#7C3AED" radius={[6, 6, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    )}
+                </div>
+
+                <div style={s.chartCard}>
+                    <h3 style={s.chartTitle}>🎨 날짜별 이미지 생성 수 (최근 14일)</h3>
+                    {artworkByDate.length === 0 ? (
+                        <div style={s.chartEmpty}>데이터 없음</div>
+                    ) : (
+                        <ResponsiveContainer width="100%" height={220}>
+                            <LineChart data={artworkByDate} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                                <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6B7280' }} tickFormatter={(d) => d.slice(5)} />
+                                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#9CA3AF' }} />
+                                <Tooltip formatter={(v) => [`${v}개`, '생성']} labelFormatter={(l) => `날짜: ${l}`} />
+                                <Line type="monotone" dataKey="count" stroke="#7C3AED" strokeWidth={2.5} dot={{ r: 4, fill: '#7C3AED' }} activeDot={{ r: 6 }} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    )}
+                </div>
+            </div>
 
             {/* 📬 응답 대기 문의 */}
             <div style={s.inquirySection}>
@@ -257,7 +321,11 @@ const s: Record<string, React.CSSProperties> = {
     replyForm: { display: 'flex', flexDirection: 'column', gap: '8px' },
     textarea: { width: '100%', padding: '10px 12px', fontSize: '13px', border: '1.5px solid #E5E7EB', borderRadius: '10px', resize: 'vertical' as const, outline: 'none', boxSizing: 'border-box' as const, fontFamily: 'inherit' },
     submitBtn: { alignSelf: 'flex-end', padding: '9px 22px', background: 'linear-gradient(135deg,#7C3AED,#6366F1)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '13px', cursor: 'pointer' },
-    quickMenu: { marginTop: '20px' },
+    chartGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '24px', marginBottom: '40px' },
+    chartCard: { background: '#fff', borderRadius: '20px', padding: '24px 28px', boxShadow: '0 4px 16px rgba(139,92,246,0.08)', border: '1px solid #EDE9FE' },
+    chartTitle: { fontSize: '15px', fontWeight: 700, color: '#5B21B6', marginBottom: '16px' },
+    chartEmpty: { textAlign: 'center' as const, padding: '60px 0', color: '#D1D5DB', fontSize: '14px' },
+    quickMenu: { marginTop: '48px' },
     sectionSubTitle: { fontSize: '20px', fontWeight: 800, color: '#5B21B6', marginBottom: '20px' },
     menuBtn: {
         padding: '15px 25px',

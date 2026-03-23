@@ -9,39 +9,48 @@ import type { ArtworkResponse } from '../types'
 function ArtworkCarousel() {
   const navigate = useNavigate()
   const [artworks, setArtworks] = useState<ArtworkResponse[]>([])
+  const [adminImages, setAdminImages] = useState<string[]>([])
   const ringRef = useRef<HTMLDivElement>(null)
   const angleRef = useRef(0)
   const rafRef = useRef<number>()
   const pausedRef = useRef(false)
 
   useEffect(() => {
+    try {
+      const saved = localStorage.getItem('admin_main_images')
+      if (saved) {
+        const parsed: (string | null)[] = JSON.parse(saved)
+        setAdminImages(parsed.filter(Boolean) as string[])
+      }
+    } catch {}
+
     exploreArtworks('latest', undefined, 50)
       .then(data => setArtworks(data.filter(a => a.imageUrl).slice(0, 10)))
       .catch(() => {})
   }, [])
 
-  useEffect(() => {
-    if (artworks.length === 0) return
-    const n = artworks.length
-    const radius = 380
+  const items: { id: string; imageUrl: string; artworkId?: string }[] =
+    adminImages.length > 0
+      ? adminImages.map((src, i) => ({ id: String(i), imageUrl: src }))
+      : artworks.map(a => ({ id: a.id, imageUrl: a.imageUrl!, artworkId: a.id }))
 
+  useEffect(() => {
+    if (items.length === 0) return
     const animate = () => {
       angleRef.current += 0.18
-
       if (ringRef.current) {
         ringRef.current.style.transform =
           `rotateX(-5deg) rotateZ(8deg) rotateY(${angleRef.current}deg)`
       }
-
       rafRef.current = requestAnimationFrame(animate)
     }
     rafRef.current = requestAnimationFrame(animate)
     return () => cancelAnimationFrame(rafRef.current!)
-  }, [artworks.length])
+  }, [items.length])
 
-  if (artworks.length === 0) return null
+  if (items.length === 0) return null
 
-  const n = artworks.length
+  const n = items.length
   const radius = 380
   const cardW = 230
   const cardH = 300
@@ -52,15 +61,15 @@ function ArtworkCarousel() {
     >
       <div style={{ position: 'absolute', top: '50%', left: '50%', width: 0, height: 0, transformStyle: 'preserve-3d' }}>
         <div ref={ringRef} style={{ transformStyle: 'preserve-3d' }}>
-          {artworks.map((art, i) => {
+          {items.map((item, i) => {
             const theta = (i / n) * 2 * Math.PI
             const x = radius * Math.cos(theta)
             const z = radius * Math.sin(theta)
             const cardAngleDeg = (theta * 180) / Math.PI
             return (
               <div
-                key={art.id}
-                onClick={() => navigate(`/artwork/${art.id}`)}
+                key={item.id}
+                onClick={() => item.artworkId && navigate(`/artwork/${item.artworkId}`)}
                 style={{
                   position: 'absolute',
                   width: cardW,
@@ -70,14 +79,14 @@ function ArtworkCarousel() {
                   transform: `translateX(${x}px) translateZ(${z}px) rotateY(${-cardAngleDeg}deg)`,
                   borderRadius: 20,
                   overflow: 'hidden',
-                  cursor: 'pointer',
+                  cursor: item.artworkId ? 'pointer' : 'default',
                   boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
                   opacity: 1,
                 }}
               >
                 <img
-                  src={art.imageUrl!}
-                  alt={art.title ?? ''}
+                  src={item.imageUrl}
+                  alt=""
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', pointerEvents: 'none' }}
                 />
               </div>
