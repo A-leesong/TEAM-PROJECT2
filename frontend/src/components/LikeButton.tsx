@@ -53,15 +53,17 @@ const LikeButton: React.FC<LikeButtonProps> = ({ isLiked, likeCount, onToggle, d
   }, [isLiked])
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
     if (disabled) return
-    
+
     // 소리 없이 시각적 효과만 트리거
     if (!isLiked) {
         triggerBurst(e)
         setIsAnimating(true)
         setTimeout(() => setIsAnimating(false), 500)
     }
-    
+
     onToggle()
   }
 
@@ -107,7 +109,7 @@ const LikeButton: React.FC<LikeButtonProps> = ({ isLiked, likeCount, onToggle, d
             transition: 'transform 0.2s',
         }}
       />
-      {variant !== 'slim' && <span>{isLiked ? '좋아요 완료!' : '응원하기'}</span>}
+      {variant !== 'slim' && <span>{isLiked ? '좋아요!' : '응원하기'}</span>}
       <span style={{ 
           fontSize: variant === 'slim' ? '11px' : '13px', 
           opacity: 0.9, 

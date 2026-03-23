@@ -910,23 +910,9 @@ export default function Canvas() {
             boxShadow: '0 24px 64px rgba(124,58,237,0.25)',
             maxHeight: '90vh', overflowY: 'auto',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <p style={{ margin: 0, fontSize: 12, color: '#a78bfa', fontWeight: 600 }}>변환 완료</p>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#1e1b4b' }}>{result.style}</h3>
-              </div>
-              <button
-                onClick={handleReset}
-                style={{
-                  width: 36, height: 36, borderRadius: 10, border: '1.5px solid #ddd6fe',
-                  background: 'white', cursor: 'pointer', color: '#a78bfa',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
+            <div>
+              <p style={{ margin: 0, fontSize: 12, color: '#a78bfa', fontWeight: 600 }}>변환 완료</p>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#1e1b4b' }}>{result.style}</h3>
             </div>
 
             <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>

@@ -116,7 +116,6 @@ export default function Decalcomania() {
     try {
       const res = await startSession(authNickname ?? 'guest')
       setTopic(res.topic)
-      setTokenBalance(Math.max(0, useAuthStore.getState().tokenBalance - 1))
       setPhase('drawing')
     } catch (err: unknown) {
       const code = (err as { response?: { data?: { error?: { code?: string } } } })?.response?.data?.error?.code

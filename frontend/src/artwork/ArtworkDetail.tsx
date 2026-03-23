@@ -4,6 +4,7 @@ import { getArtwork, toggleLikeArtwork, reportArtwork } from '../api/artwork'
 import type { ArtworkResponse } from '../types'
 import Header from '../components/Header'
 import LikeButton from '../components/LikeButton'
+import { Link2, Check, Flag } from 'lucide-react'
 
 export default function ArtworkDetail() {
   const { id } = useParams<{ id: string }>()
@@ -103,6 +104,9 @@ export default function ArtworkDetail() {
         @keyframes blob2 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(60px)} }
         @keyframes blob3 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-40px)} }
         @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+        .detail-home-btn:hover { background: linear-gradient(135deg, rgba(107,130,160,0.28) 0%, rgba(245,240,248,0.95) 100%) !important; border-color: rgba(107,130,160,0.6) !important; color: #4a6a8a !important; }
+        .detail-share-btn:hover { background: rgba(107,130,160,0.25) !important; border-color: rgba(107,130,160,0.6) !important; color: #4a6a8a !important; }
+        .detail-report-btn:hover { background: rgba(196,122,138,0.25) !important; border-color: rgba(196,122,138,0.6) !important; color: #a85a6a !important; }
       `}</style>
 
       <div style={s.blobs}>
@@ -159,8 +163,8 @@ export default function ArtworkDetail() {
                 </div>
               </div>
             </div>
-            <button onClick={() => navigate('/explore')} style={s.galleryHomeBtn}>
-              ← 갤러리 홈으로 돌아가기
+            <button onClick={() => navigate('/explore')} style={s.galleryHomeBtn} className="detail-home-btn">
+              갤러리 홈으로 돌아가기
             </button>
           </div>
 
@@ -211,11 +215,12 @@ export default function ArtworkDetail() {
               </div>
 
               <div style={s.secondaryBtns}>
-                <button onClick={handleShare} style={s.shareBtn}>
-                  {copied ? '✓ 복사됨!' : '🔗 공유하기'}
+                <button onClick={handleShare} style={s.shareBtn} className="detail-share-btn">
+                  {copied ? <Check size={14} strokeWidth={2.5} /> : <Link2 size={14} strokeWidth={2} />}
+                  {copied ? '복사됨!' : '공유하기'}
                 </button>
-                <button onClick={() => setIsReportModalOpen(true)} style={s.reportBtn}>
-                  🚩 신고
+                <button onClick={() => setIsReportModalOpen(true)} style={s.reportBtn} className="detail-report-btn">
+                  <Flag size={14} strokeWidth={2} /> 신고
                 </button>
               </div>
             </div>
@@ -563,6 +568,10 @@ const s: Record<string, React.CSSProperties> = {
     border: '1.5px solid rgba(107,130,160,0.2)',
     borderRadius: 14,
     cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
   reportBtn: {
     padding: '11px 16px',
@@ -571,6 +580,10 @@ const s: Record<string, React.CSSProperties> = {
     color: '#c47a8a',
     background: 'rgba(196,122,138,0.08)',
     border: '1.5px solid rgba(196,122,138,0.2)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     borderRadius: 14,
     cursor: 'pointer',
   },

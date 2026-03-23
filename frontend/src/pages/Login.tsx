@@ -7,7 +7,7 @@ function AnimatedEye({ passwordFocused, emailFocused }: { passwordFocused: boole
   const svgRef = useRef<SVGSVGElement>(null)
   const targetRef = useRef({ x: 0, y: 0 })
   const currentRef = useRef({ x: 0, y: 0 })
-  const rafRef = useRef<number>()
+  const rafRef = useRef<number | undefined>(undefined)
   const [pupil, setPupil] = useState({ x: 0, y: 0 })
   const [blink, setBlink] = useState(false)
 

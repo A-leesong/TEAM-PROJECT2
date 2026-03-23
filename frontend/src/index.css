@@ -526,6 +526,19 @@ code {
   100% { transform: translate(var(--tx), var(--ty)) scale(1.5) rotate(var(--tr)); opacity: 0; }
 }
 
+.like-button-wrapper:hover {
+  transform: scale(1.05);
+  background: linear-gradient(135deg, #ff5c8d, #ff85a1) !important;
+  box-shadow: 0 6px 20px rgba(255, 92, 141, 0.4) !important;
+  color: #fff !important;
+}
+
+.like-button-wrapper.slim:hover {
+  transform: scale(1.12);
+  background: rgba(255, 92, 141, 0.2) !important;
+  color: #ff5c8d !important;
+}
+
 .like-button-wrapper:active {
   transform: scale(0.95);
 }

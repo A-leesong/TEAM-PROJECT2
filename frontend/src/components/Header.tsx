@@ -1,5 +1,6 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { consumeToken } from '../api/canvas'
 import { useAuthStore } from '../stores/useAuthStore'
 import { Ticket } from 'lucide-react'
 
@@ -7,12 +8,23 @@ interface HeaderProps {
   hideOnScroll?: boolean
 }
 
+const PencilSVG = () => (
+  <svg aria-hidden="true" viewBox="0 0 100 32" preserveAspectRatio="none"
+    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'hidden', borderRadius: 20 }}>
+    <polyline className="pencil-zigzag" pathLength="1" filter="url(#paint-texture)"
+      points="0,4 13,28 25,4 38,28 50,4 63,28 75,4 88,28 100,4" />
+  </svg>
+)
+
 export default function Header({ hideOnScroll = false }: HeaderProps) {
   const navigate = useNavigate()
-  const { isAuthenticated, nickname, tokenBalance, logout, profileImageUrl, role } = useAuthStore()
+  const { isAuthenticated, nickname, tokenBalance, setTokenBalance, logout, profileImageUrl, role } = useAuthStore()
   const [visible, setVisible] = useState(true)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const [showDrawMenu, setShowDrawMenu] = useState(false)
+  const [showTokenModal, setShowTokenModal] = useState<'canvas' | 'deco' | 'time' | null>(null)
   const profileRef = useRef<HTMLDivElement>(null)
+  const drawRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!hideOnScroll) return
@@ -42,9 +54,103 @@ export default function Header({ hideOnScroll = false }: HeaderProps) {
 
   return (
     <>
+      {/* 토큰 확인 모달 */}
+      {showTokenModal && (
+        <div onClick={() => setShowTokenModal(null)} style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'rgba(10,8,20,0.6)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px',
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'rgba(255,255,255,0.97)',
+            borderRadius: 28, padding: '40px 36px',
+            width: '100%', maxWidth: 380,
+            boxShadow: '0 24px 80px rgba(0,0,0,0.18)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+            textAlign: 'center',
+          }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: 16,
+              background: showTokenModal === 'deco' ? 'rgba(107,130,160,0.12)' : showTokenModal === 'time' ? 'rgba(212,168,0,0.12)' : 'rgba(196,122,138,0.12)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+            }}>
+              <Ticket size={26} color={showTokenModal === 'deco' ? '#4a6a8a' : showTokenModal === 'time' ? '#b08800' : '#a85a6a'} />
+            </div>
+            <h3 style={{ fontSize: 20, fontWeight: 900, margin: 0, color: '#1a1a2e', letterSpacing: -0.5 }}>
+              토큰 1개가 필요해요
+            </h3>
+            <p style={{ fontSize: 14, color: '#8a8aaa', lineHeight: 1.75, margin: '4px 0 8px' }}>
+              {showTokenModal === 'canvas' && 'AI 변환을 요청할 때 토큰 1개가 차감돼요.'}
+              {showTokenModal === 'deco' && 'AI 미러 변환을 요청할 때 토큰 1개가 차감돼요.'}
+              {showTokenModal === 'time' && '시간초 그림판을 시작할 때 토큰 1개가 차감돼요.'}
+              <br />현재 보유 토큰 <strong style={{ color: '#4a5a7a' }}>{tokenBalance}개</strong>
+            </p>
+            <div style={{ display: 'flex', gap: 10, width: '100%', marginTop: 8 }}>
+              <button onClick={() => setShowTokenModal(null)} style={{
+                flex: 1, padding: '13px', fontSize: 15, fontWeight: 600,
+                background: 'none', border: '1.5px solid #e2e8f0',
+                borderRadius: 14, cursor: 'pointer', color: '#8a8aaa',
+              }}>취소</button>
+              <button onClick={async () => {
+                if (showTokenModal === 'time') {
+                  try {
+                    const res = await consumeToken()
+                    setTokenBalance(res.tokenBalance)
+                  } catch {
+                    alert('토큰이 부족합니다.')
+                    return
+                  }
+                }
+                setShowTokenModal(null)
+                navigate(showTokenModal === 'deco' ? '/decalcomania' : showTokenModal === 'time' ? '/time-attack' : '/canvas')
+              }} style={{
+                flex: 1, padding: '13px', fontSize: 15, fontWeight: 700,
+                background: showTokenModal === 'deco'
+                  ? 'linear-gradient(135deg, #6B82A0, #4a6a8a)'
+                  : showTokenModal === 'time'
+                  ? 'linear-gradient(135deg, #d4a800, #b08800)'
+                  : 'linear-gradient(135deg, #c47a8a, #a85a6a)',
+                border: 'none', borderRadius: 14, cursor: 'pointer', color: '#fff',
+              }}>시작할게요!</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 공유 SVG 필터 */}
+      <svg style={{ position: 'absolute', width: 0, height: 0 }}>
+        <defs>
+          <filter id="paint-texture" x="-10%" y="-10%" width="120%" height="120%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.65 0.4" numOctaves="3" seed="2" result="noise"/>
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
+            <feGaussianBlur in="displaced" stdDeviation="0.6"/>
+          </filter>
+        </defs>
+      </svg>
+
       <style>{`
-        .egag-header-right span, .egag-header-right button { font-size: clamp(12px, 1.2vw, 14px) !important; }
+        .sketch-btn {
+          position: relative;
+          isolation: isolate;
+          font-size: 16px; font-weight: 600; color: #6B82A0;
+          background: none; border: none;
+          border-radius: 20px; padding: 6px 18px;
+          cursor: pointer; transition: color 0.3s, font-size 0.2s ease, font-weight 0.2s ease;
+        }
+        .sketch-btn:hover { color: #fff; font-size: 17.5px; font-weight: 800; }
+        .pencil-zigzag {
+          fill: none;
+          stroke: rgba(212,96,122,0.9);
+          stroke-width: 16;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+          stroke-dasharray: 0 1;
+          opacity: 0;
+          transition: stroke-dasharray 0.5s ease, opacity 0.3s ease;
+        }
+        .sketch-btn:hover .pencil-zigzag { stroke-dasharray: 1.1 0; opacity: 1; }
       `}</style>
+
       <header style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 28px', height: 70, overflow: 'visible',
@@ -58,27 +164,62 @@ export default function Header({ hideOnScroll = false }: HeaderProps) {
         border: '1px solid rgba(255,255,255,0.8)',
         zIndex: 100,
       }}>
-        {/* 로고 + 갤러리 버튼 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        {/* 로고 + 네비 버튼 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => navigate('/')} role="button">
             <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 110 }} />
           </div>
-          <button
-            onClick={() => navigate('/explore')}
-            style={{
-              fontSize: 13, fontWeight: 600, color: '#6B82A0',
-              background: 'rgba(107,130,160,0.08)', border: '1px solid rgba(107,130,160,0.2)',
-              borderRadius: 20, padding: '6px 18px', cursor: 'pointer',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(107,130,160,0.16)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(107,130,160,0.08)' }}
-          >
-            갤러리
+          <div ref={drawRef} style={{ position: 'relative' }}
+            onMouseEnter={() => setShowDrawMenu(true)}
+            onMouseLeave={() => setShowDrawMenu(false)}>
+            <button className="sketch-btn">
+              <PencilSVG />
+              <span style={{ position: 'relative', zIndex: 1 }}>그림그리기</span>
+            </button>
+            <div style={{
+              position: 'absolute', top: '100%', left: 0, paddingTop: 8,
+              background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(16px)',
+              borderRadius: 16, overflow: 'hidden',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+              border: '1px solid rgba(255,255,255,0.8)',
+              minWidth: 160,
+              opacity: showDrawMenu ? 1 : 0,
+              transform: showDrawMenu ? 'translateY(0) scale(1)' : 'translateY(-8px) scale(0.96)',
+              pointerEvents: showDrawMenu ? 'auto' : 'none',
+              transition: 'opacity 0.18s ease, transform 0.18s ease',
+              zIndex: 200,
+            }}>
+              {[
+                { label: '마법 그림판', type: 'canvas' as const },
+                { label: '거울 그림판', type: 'deco' as const },
+                { label: '시간초 그림판', type: 'time' as const },
+              ].map(({ label, type }) => (
+                <button key={label} onClick={() => { setShowDrawMenu(false); setShowTokenModal(type) }}
+                  style={{
+                    display: 'block', width: '100%', padding: '11px 16px',
+                    background: 'none', border: 'none', textAlign: 'left',
+                    fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#4a4a6a',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(107,130,160,0.08)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'none' }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button className="sketch-btn" onClick={() => navigate('/explore')}>
+            <PencilSVG />
+            <span style={{ position: 'relative', zIndex: 1 }}>갤러리</span>
+          </button>
+          <button className="sketch-btn" onClick={() => navigate('/token-shop')}>
+            <PencilSVG />
+            <span style={{ position: 'relative', zIndex: 1 }}>토큰충전</span>
           </button>
         </div>
 
         {/* 우측 */}
-        <div className="egag-header-right" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {isAuthenticated && nickname ? (
             <>
               <span
@@ -164,25 +305,13 @@ export default function Header({ hideOnScroll = false }: HeaderProps) {
             </>
           ) : (
             <>
-              <button
-                onClick={() => navigate('/login')}
-                style={{
-                  fontSize: 14, fontWeight: 600, color: '#6B82A0',
-                  background: 'none', border: '1px solid rgba(107,130,160,0.4)',
-                  borderRadius: 20, padding: '7px 20px', cursor: 'pointer',
-                }}
-              >
-                로그인
+              <button className="sketch-btn" onClick={() => navigate('/login')}>
+                <PencilSVG />
+                <span style={{ position: 'relative', zIndex: 1 }}>로그인</span>
               </button>
-              <button
-                onClick={() => navigate('/signup')}
-                style={{
-                  fontSize: 14, fontWeight: 700, color: '#fff',
-                  background: 'linear-gradient(135deg, #6B82A0, #c47a8a)',
-                  border: 'none', borderRadius: 20, padding: '7px 20px', cursor: 'pointer',
-                }}
-              >
-                회원가입
+              <button className="sketch-btn" onClick={() => navigate('/signup')}>
+                <PencilSVG />
+                <span style={{ position: 'relative', zIndex: 1 }}>회원가입</span>
               </button>
             </>
           )}

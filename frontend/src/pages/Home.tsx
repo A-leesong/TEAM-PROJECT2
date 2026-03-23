@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { consumeToken } from '../api/canvas'
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { useAuthStore } from '../stores/useAuthStore'
 import { Pencil, Layers, Ticket, Sparkles, Timer, ArrowRight, MessageCircle, ChevronUp } from 'lucide-react'
@@ -12,7 +13,7 @@ function ArtworkCarousel() {
   const [adminImages, setAdminImages] = useState<string[]>([])
   const ringRef = useRef<HTMLDivElement>(null)
   const angleRef = useRef(0)
-  const rafRef = useRef<number>()
+  const rafRef = useRef<number | undefined>(undefined)
   const pausedRef = useRef(false)
 
   useEffect(() => {
@@ -141,6 +142,7 @@ export default function Home() {
   const navigate = useNavigate()
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const tokenBalance = useAuthStore(s => s.tokenBalance)
+  const setTokenBalance = useAuthStore(s => s.setTokenBalance)
   const featureRefs = useRef<(HTMLDivElement | null)[]>([])
   const featureSectionRef = useRef<HTMLElement | null>(null)
   const [showTop, setShowTop] = useState(false)
@@ -194,11 +196,50 @@ export default function Home() {
         @keyframes star-pop { 0%{transform:translate(-50%,-50%) scale(0) rotate(0deg);opacity:1} 100%{transform:translate(-50%,-50%) scale(1.4) rotate(45deg);opacity:0} }
         @keyframes twinkle { 0%,100%{opacity:0;transform:scale(0.4)} 50%{opacity:1;transform:scale(1)} }
         @keyframes twinkle-cross { 0%,100%{opacity:0;transform:scale(0.3) rotate(0deg)} 50%{opacity:0.9;transform:scale(1) rotate(20deg)} }
+        @keyframes shootStar {
+          0%     { transform: rotate(45deg) translateX(-20px); opacity: 0; }
+          4%     { opacity: 0.4; }
+          6%     { opacity: 1; }
+          20%    { transform: rotate(45deg) translateX(620px); opacity: 0; }
+          20.01% { transform: rotate(45deg) translateX(-20px); opacity: 0; }
+          100%   { transform: rotate(45deg) translateX(-20px); opacity: 0; }
+        }
+        @keyframes shootStarRev {
+          0%     { transform: rotate(135deg) translateX(-20px); opacity: 0; }
+          4%     { opacity: 0.4; }
+          6%     { opacity: 1; }
+          20%    { transform: rotate(135deg) translateX(620px); opacity: 0; }
+          20.01% { transform: rotate(135deg) translateX(-20px); opacity: 0; }
+          100%   { transform: rotate(135deg) translateX(-20px); opacity: 0; }
+        }
+        .shoot-star {
+          position: absolute;
+          height: 2px;
+          border-radius: 0 1px 1px 0;
+          opacity: 0;
+          filter: blur(0.4px);
+        }
+        .shoot-star::after {
+          content: '';
+          position: absolute;
+          right: -3px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: white;
+          box-shadow:
+            0 0 2px 1px rgba(255,255,255,1),
+            0 0 8px 3px rgba(210,230,255,0.9),
+            0 0 18px 6px rgba(170,200,255,0.6),
+            0 0 35px 10px rgba(140,175,255,0.3);
+        }
         @keyframes float1 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-18px)} }
         @keyframes float2 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
-        @keyframes blob1 { 0%{transform:translateY(0px)} 50%{transform:translateY(-80px)} 100%{transform:translateY(0px)} }
-        @keyframes blob2 { 0%{transform:translateY(0px)} 50%{transform:translateY(80px)} 100%{transform:translateY(0px)} }
-        @keyframes blob3 { 0%{transform:translateY(0px)} 50%{transform:translateY(-60px)} 100%{transform:translateY(0px)} }
+        @keyframes blob1 { 0%{transform:translateY(0px);opacity:1} 50%{transform:translateY(-80px);opacity:0.4} 100%{transform:translateY(0px);opacity:1} }
+        @keyframes blob2 { 0%{transform:translateY(0px);opacity:0.5} 50%{transform:translateY(80px);opacity:1} 100%{transform:translateY(0px);opacity:0.5} }
+        @keyframes blob3 { 0%{transform:translateY(0px);opacity:1} 50%{transform:translateY(-60px);opacity:0.45} 100%{transform:translateY(0px);opacity:1} }
         @keyframes smoke1 {
           0%   { transform:translate(0,0) scale(1);      border-radius:42% 58% 70% 30%/45% 45% 55% 55%; opacity:0.22; }
           20%  { transform:translate(28px,-35px) scale(1.07); border-radius:60% 40% 30% 70%/60% 30% 70% 40%; opacity:0.28; }
@@ -290,14 +331,14 @@ export default function Home() {
       <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden' }}>
         {/* 메인 blob들 */}
         {/* 분홍 — 왼쪽 위 */}
-        <div style={{ position: 'absolute', top: '-15%', left: '-10%', width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,150,180,0.25) 0%, transparent 65%)', animation: 'blob1 7s ease-in-out infinite', filter: 'blur(70px)' }} />
+        <div style={{ position: 'absolute', top: '-15%', left: '-10%', width: 800, height: 800, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,150,180,0.25) 0%, transparent 65%)', animation: 'blob1 7s ease-in-out infinite', filter: 'blur(80px)' }} />
         {/* 노랑 — 오른쪽 */}
-        <div style={{ position: 'absolute', top: '15%', right: '-12%', width: 560, height: 560, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,220,80,0.25) 0%, transparent 65%)', animation: 'blob2 9s ease-in-out infinite', filter: 'blur(70px)' }} />
+        <div style={{ position: 'absolute', top: '15%', right: '-12%', width: 720, height: 720, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,220,80,0.25) 0%, transparent 65%)', animation: 'blob2 9s ease-in-out infinite', filter: 'blur(80px)' }} />
         {/* 파랑 — 아래 왼쪽 */}
-        <div style={{ position: 'absolute', bottom: '0%', left: '15%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(130,175,230,0.25) 0%, transparent 65%)', animation: 'blob3 11s ease-in-out infinite', filter: 'blur(70px)' }} />
+        <div style={{ position: 'absolute', bottom: '0%', left: '10%', width: 680, height: 680, borderRadius: '50%', background: 'radial-gradient(circle, rgba(130,175,230,0.25) 0%, transparent 65%)', animation: 'blob3 11s ease-in-out infinite', filter: 'blur(80px)' }} />
         {/* 보조 blob들 */}
-        <div style={{ position: 'absolute', top: '40%', left: '30%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,150,180,0.15) 0%, transparent 65%)', animation: 'blob2 13s ease-in-out infinite', filter: 'blur(80px)' }} />
-        <div style={{ position: 'absolute', top: '-5%', right: '25%', width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,220,80,0.18) 0%, transparent 65%)', animation: 'blob1 8s ease-in-out infinite 2s', filter: 'blur(65px)' }} />
+        <div style={{ position: 'absolute', top: '40%', left: '25%', width: 580, height: 580, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,150,180,0.15) 0%, transparent 65%)', animation: 'blob2 13s ease-in-out infinite', filter: 'blur(90px)' }} />
+        <div style={{ position: 'absolute', top: '-5%', right: '20%', width: 480, height: 480, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,220,80,0.18) 0%, transparent 65%)', animation: 'blob1 8s ease-in-out infinite 2s', filter: 'blur(75px)' }} />
         {/* 배경 로고 워터마크 */}
         <img
           src="/Egag_logo-removebg.png"
@@ -333,34 +374,10 @@ export default function Home() {
           {/* 핑크 연기 — 왼쪽 위 */}
           <div style={{
             position: 'absolute', top: '-10%', left: '-5%',
-            width: 480, height: 380,
+            width: 700, height: 560,
             background: 'radial-gradient(ellipse at 40% 50%, rgba(255,140,180,0.45) 0%, rgba(255,100,160,0.20) 40%, transparent 70%)',
-            filter: 'url(#smoke-filter) blur(18px)',
-            animation: 'smoke1 14s ease-in-out infinite',
-          }} />
-          {/* 보라 연기 — 가운데 오른쪽 */}
-          <div style={{
-            position: 'absolute', top: '15%', right: '-8%',
-            width: 420, height: 360,
-            background: 'radial-gradient(ellipse at 60% 45%, rgba(160,100,255,0.38) 0%, rgba(130,80,240,0.18) 40%, transparent 70%)',
-            filter: 'url(#smoke-filter) blur(22px)',
-            animation: 'smoke2 18s ease-in-out infinite 2s',
-          }} />
-          {/* 하늘 연기 — 아래 가운데 */}
-          <div style={{
-            position: 'absolute', bottom: '-5%', left: '25%',
-            width: 500, height: 320,
-            background: 'radial-gradient(ellipse at 50% 55%, rgba(100,180,255,0.35) 0%, rgba(80,160,255,0.15) 40%, transparent 70%)',
-            filter: 'url(#smoke-filter) blur(20px)',
-            animation: 'smoke3 22s ease-in-out infinite 1s',
-          }} />
-          {/* 노랑 연기 — 오른쪽 위 보조 */}
-          <div style={{
-            position: 'absolute', top: '5%', left: '40%',
-            width: 340, height: 280,
-            background: 'radial-gradient(ellipse at 50% 40%, rgba(255,210,80,0.30) 0%, rgba(255,190,60,0.12) 40%, transparent 70%)',
             filter: 'url(#smoke-filter) blur(24px)',
-            animation: 'smoke1 16s ease-in-out infinite 4s',
+            animation: 'smoke1 14s ease-in-out infinite',
           }} />
         </div>
 
@@ -394,6 +411,40 @@ export default function Home() {
 
         {/* 별 레이어 */}
         <div className="star-field" style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', borderRadius: 'inherit' }} />
+
+        {/* 별똥별 레이어 */}
+        <div style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', overflow: 'hidden' }}>
+          {/* 좌상단 → 우하단 (위쪽) */}
+          {[
+            { top: '5%',  left: '5%',  width: 130, delay: 0,   dur: 18 },
+            { top: '2%',  left: '20%', width: 100, delay: 7,   dur: 22 },
+            { top: '8%',  left: '10%', width: 150, delay: 13,  dur: 20 },
+            { top: '15%', left: '3%',  width: 110, delay: 20,  dur: 25 },
+          ].map((s, i) => (
+            <div key={`top-${i}`} className="shoot-star" style={{
+              top: s.top,
+              left: s.left,
+              width: s.width,
+              background: 'linear-gradient(to right, transparent 0%, rgba(180,205,255,0.1) 30%, rgba(255,255,255,0.55) 65%, rgba(255,255,255,0.95) 85%, white 100%)',
+              animation: `shootStar ${s.dur}s ease-in ${s.delay}s infinite`,
+            }} />
+          ))}
+          {/* 우상단 → 좌하단 (아래쪽) */}
+          {[
+            { top: '60%', left: '85%', width: 120, delay: 4,   dur: 20 },
+            { top: '70%', left: '75%', width: 100, delay: 11,  dur: 18 },
+            { top: '55%', left: '90%', width: 140, delay: 17,  dur: 23 },
+            { top: '75%', left: '80%', width: 110, delay: 25,  dur: 21 },
+          ].map((s, i) => (
+            <div key={`bot-${i}`} className="shoot-star" style={{
+              top: s.top,
+              left: s.left,
+              width: s.width,
+              background: 'linear-gradient(to right, transparent 0%, rgba(180,205,255,0.1) 30%, rgba(255,255,255,0.55) 65%, rgba(255,255,255,0.95) 85%, white 100%)',
+              animation: `shootStarRev ${s.dur}s ease-in ${s.delay}s infinite`,
+            }} />
+          ))}
+        </div>
         {/* 성운 glow */}
         <div style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: '10%', left: '5%', width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,40,160,0.18) 0%, transparent 65%)' }} />
@@ -536,12 +587,12 @@ export default function Home() {
               <Ticket size={26} color={showTokenModal === 'deco' ? '#4a6a8a' : showTokenModal === 'time' ? '#b08800' : '#a85a6a'} />
             </div>
             <h3 style={{ fontSize: 20, fontWeight: 900, margin: 0, color: '#1a1a2e', letterSpacing: -0.5 }}>
-              토큰 1개가 사용돼요
+              토큰 1개가 필요해요
             </h3>
             <p style={{ fontSize: 14, color: '#8a8aaa', lineHeight: 1.75, margin: '4px 0 8px' }}>
-              {showTokenModal === 'canvas' && '그림을 완성하고 AI 변환을 요청할 때\n토큰 1개가 소비됩니다.'}
-              {showTokenModal === 'deco' && '거울 그림판은 AI 미러 기능 사용 시\n토큰 1개가 소비됩니다.'}
-              {showTokenModal === 'time' && '시간초 그림판은 결과 확인 시\n토큰 1개가 소비됩니다.'}
+              {showTokenModal === 'canvas' && 'AI 변환을 요청할 때 토큰 1개가 차감돼요.'}
+              {showTokenModal === 'deco' && 'AI 미러 변환을 요청할 때 토큰 1개가 차감돼요.'}
+              {showTokenModal === 'time' && '시간초 그림판을 시작할 때 토큰 1개가 차감돼요.'}
               <br />현재 보유 토큰 <strong style={{ color: '#4a5a7a' }}>{tokenBalance}개</strong>
             </p>
             <div style={{ display: 'flex', gap: 10, width: '100%', marginTop: 8 }}>
@@ -556,7 +607,16 @@ export default function Home() {
                 취소
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
+                  if (showTokenModal === 'time') {
+                    try {
+                      const res = await consumeToken()
+                      setTokenBalance(res.tokenBalance)
+                    } catch {
+                      alert('토큰이 부족합니다.')
+                      return
+                    }
+                  }
                   setShowTokenModal(null)
                   navigate(showTokenModal === 'deco' ? '/decalcomania' : showTokenModal === 'time' ? '/time-attack' : '/canvas')
                 }}

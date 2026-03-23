@@ -36,6 +36,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/auth/kakao/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/canvas/transform").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/canvas/consume-token").authenticated()
                         .requestMatchers("/api/canvas/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/artworks/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/gallery/public").permitAll()

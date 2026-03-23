@@ -96,14 +96,23 @@ public class ArtworkService {
     }
 
     private String downloadAndSave(String imageUrl) {
-        if (imageUrl == null || !imageUrl.startsWith("http")) return imageUrl;
+        if (imageUrl == null) return imageUrl;
         try {
             Path dir = Paths.get("uploads/artworks");
             Files.createDirectories(dir);
             String filename = UUID.randomUUID() + ".png";
             Path dest = dir.resolve(filename);
-            try (InputStream in = new URL(imageUrl).openStream()) {
-                Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
+            if (imageUrl.startsWith("data:image")) {
+                // base64 data URI 처리
+                String base64 = imageUrl.substring(imageUrl.indexOf(",") + 1);
+                byte[] bytes = java.util.Base64.getDecoder().decode(base64);
+                Files.write(dest, bytes);
+            } else if (imageUrl.startsWith("http")) {
+                try (InputStream in = new URL(imageUrl).openStream()) {
+                    Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
+                }
+            } else {
+                return imageUrl;
             }
             return "/uploads/artworks/" + filename;
         } catch (Exception e) {
