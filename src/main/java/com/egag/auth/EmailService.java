@@ -25,7 +25,7 @@ public class EmailService {
 
         String html = """
                 <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-                  <h2 style="color: #1D4ED8;">🪞 Decalco 비밀번호 재설정</h2>
+                  <h2 style="color: #1D4ED8;">🥚 이그에그 비밀번호 재설정</h2>
                   <p><strong>%s</strong>님, 안녕하세요.</p>
                   <p>비밀번호 재설정 요청이 접수되었습니다.<br>
                   아래 버튼을 클릭하여 새 비밀번호를 설정해주세요.</p>
@@ -48,7 +48,7 @@ public class EmailService {
             CreateEmailOptions options = CreateEmailOptions.builder()
                     .from(fromAddress)
                     .to(toEmail)
-                    .subject("[Decalco] 비밀번호 재설정 안내")
+                    .subject("[이그에그] 비밀번호 재설정 안내")
                     .html(html)
                     .build();
 

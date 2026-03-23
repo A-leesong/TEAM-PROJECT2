@@ -60,27 +60,25 @@ export default function Notifications() {
     }}>
       <Header />
       
-      <div className="layout-container" style={{ maxWidth: 640, margin: '0 auto', padding: '0 20px' }}>
-        <header style={{ textAlign: 'center', marginBottom: 40 }}>
-          <h1 style={{ 
-            fontSize: 'clamp(28px, 5vw, 36px)', 
-            fontWeight: 900, 
-            color: '#1a1a2e', 
-            marginBottom: 12,
-            letterSpacing: -1.5,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 12
+      <div className="layout-container" style={{ maxWidth: 900, margin: '0 auto', padding: '0 20px' }}>
+        <header style={{ textAlign: 'center', marginBottom: 64, animation: 'fadeUp 0.6s ease both' }}>
+          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: 3, color: '#c47a8a', textTransform: 'uppercase', margin: '0 0 12px' }}>
+            ✦ My Notifications
+          </p>
+          <h1 style={{
+            fontSize: 38,
+            fontWeight: 900,
+            margin: '0 0 12px',
+            padding: '4px 0',
+            fontFamily: "'Jua', sans-serif",
+            background: 'linear-gradient(135deg, #c47a8a 0%, #6B82A0 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
           }}>
-            내 소식 <span style={{ fontSize: '0.8em' }}>💌</span>
+            내 소식
           </h1>
-          <p style={{ 
-            fontSize: 17, 
-            color: '#6B82A0', 
-            fontWeight: 600,
-            opacity: 0.9 
-          }}>
+          <p style={{ fontSize: 16, color: '#6a6080' }}>
             친구들이 보낸 소식을 확인해볼까? ✨
           </p>
         </header>

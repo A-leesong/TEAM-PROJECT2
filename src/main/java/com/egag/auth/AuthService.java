@@ -137,8 +137,9 @@ public class AuthService implements UserDetailsService {
 
     @Transactional
     public void requestPasswordReset(PasswordResetRequest request) {
-        // 이메일로 사용자 조회
+        // 메인 이메일 또는 서브 이메일로 사용자 조회
         User user = userRepository.findByEmail(request.getEmail())
+                .or(() -> userRepository.findBySubEmail(request.getEmail()))
                 .orElseThrow(() -> new CustomException(
                         HttpStatus.NOT_FOUND, "USER_NOT_FOUND",
                         "입력하신 이메일로 가입된 계정이 없습니다."));

@@ -1,7 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
 
 const DEFAULT_SLOTS = 10;
 const MAX_SLOTS = 15;
+
+interface ArtworkItem {
+    id: string;
+    imageUrl: string;
+    title?: string;
+    userNickname?: string;
+}
 
 const AdminImageManagement = () => {
     const [slotCount, setSlotCount] = useState<number>(() => {
@@ -20,6 +28,12 @@ const AdminImageManagement = () => {
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [targetIndex, setTargetIndex] = useState<number | null>(null);
+
+    // 유저 그림 모달
+    const [pickerOpen, setPickerOpen] = useState(false);
+    const [pickerTarget, setPickerTarget] = useState<number | null>(null);
+    const [artworks, setArtworks] = useState<ArtworkItem[]>([]);
+    const [pickerLoading, setPickerLoading] = useState(false);
 
     useEffect(() => {
         localStorage.setItem('admin_main_images', JSON.stringify(images));
@@ -62,6 +76,32 @@ const AdminImageManagement = () => {
             updated[index] = null;
             return updated;
         });
+    };
+
+    const handleOpenPicker = async (index: number) => {
+        setPickerTarget(index);
+        setPickerOpen(true);
+        if (artworks.length > 0) return;
+        setPickerLoading(true);
+        try {
+            const res = await axios.get('/api/artworks/explore', { params: { sort: 'latest', limit: 50 } });
+            setArtworks(res.data.filter((a: ArtworkItem) => a.imageUrl));
+        } catch {
+            alert('유저 그림을 불러오는데 실패했습니다.');
+        } finally {
+            setPickerLoading(false);
+        }
+    };
+
+    const handlePickArtwork = (imageUrl: string) => {
+        if (pickerTarget === null) return;
+        setImages(prev => {
+            const updated = [...prev];
+            updated[pickerTarget] = imageUrl;
+            return updated;
+        });
+        setPickerOpen(false);
+        setPickerTarget(null);
     };
 
     const registeredCount = images.slice(0, slotCount).filter(Boolean).length;
@@ -110,10 +150,7 @@ const AdminImageManagement = () => {
 
                         {/* 버튼 영역 */}
                         <div style={s.btnGroup}>
-                            <button
-                                style={s.btnRegister}
-                                onClick={() => handleRegisterClick(i)}
-                            >
+                            <button style={s.btnRegister} onClick={() => handleRegisterClick(i)}>
                                 {img ? '교체' : '등록'}
                             </button>
                             <button
@@ -124,9 +161,41 @@ const AdminImageManagement = () => {
                                 삭제
                             </button>
                         </div>
+                        <button style={s.btnPicker} onClick={() => handleOpenPicker(i)}>
+                            🎨 유저 그림 불러오기
+                        </button>
                     </div>
                 ))}
             </div>
+
+            {/* 유저 그림 선택 모달 */}
+            {pickerOpen && (
+                <div style={s.modalOverlay} onClick={() => setPickerOpen(false)}>
+                    <div style={s.modalBox} onClick={e => e.stopPropagation()}>
+                        <div style={s.modalHeader}>
+                            <h3 style={s.modalTitle}>🎨 유저 그림 선택</h3>
+                            <button style={s.modalClose} onClick={() => setPickerOpen(false)}>✕</button>
+                        </div>
+                        {pickerLoading ? (
+                            <div style={s.modalEmpty}>불러오는 중...</div>
+                        ) : artworks.length === 0 ? (
+                            <div style={s.modalEmpty}>등록된 작품이 없습니다.</div>
+                        ) : (
+                            <div style={s.artworkGrid}>
+                                {artworks.map(art => (
+                                    <div key={art.id} style={s.artworkThumb} onClick={() => handlePickArtwork(art.imageUrl)}>
+                                        <img src={art.imageUrl} alt={art.title ?? ''} style={s.thumbImg} />
+                                        <div style={s.thumbInfo}>
+                                            <span style={s.thumbNick}>{art.userNickname ?? ''}</span>
+                                            <span style={s.thumbTitle}>{art.title ?? '제목 없음'}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* 카드 추가 버튼 */}
             <div style={{ marginTop: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -230,6 +299,44 @@ const s: Record<string, React.CSSProperties> = {
         background: '#FEE2E2', color: '#EF4444',
         border: '1px solid #FECACA', borderRadius: '10px', cursor: 'pointer',
     },
+    btnPicker: {
+        width: '100%', padding: '8px 0', fontSize: '12px', fontWeight: 700,
+        background: '#EDE9FE', color: '#7C3AED',
+        border: '1px solid #DDD6FE', borderRadius: '0 0 12px 12px',
+        cursor: 'pointer',
+    },
+    modalOverlay: {
+        position: 'fixed' as const, inset: 0, background: 'rgba(0,0,0,0.5)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+    },
+    modalBox: {
+        background: '#fff', borderRadius: '20px', width: '720px', maxWidth: '95vw',
+        maxHeight: '80vh', display: 'flex', flexDirection: 'column' as const,
+        overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+    },
+    modalHeader: {
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '20px 24px', borderBottom: '1px solid #F3F4F6',
+    },
+    modalTitle: { fontSize: '18px', fontWeight: 800, color: '#5B21B6', margin: 0 },
+    modalClose: {
+        background: 'none', border: 'none', fontSize: '18px', color: '#9CA3AF',
+        cursor: 'pointer', padding: '4px 8px',
+    },
+    modalEmpty: { padding: '60px', textAlign: 'center' as const, color: '#9CA3AF', fontSize: '14px' },
+    artworkGrid: {
+        display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px',
+        padding: '20px', overflowY: 'auto' as const,
+    },
+    artworkThumb: {
+        borderRadius: '12px', overflow: 'hidden', cursor: 'pointer',
+        border: '2px solid transparent', transition: 'border-color 0.2s',
+        background: '#F9FAFB',
+    },
+    thumbImg: { width: '100%', aspectRatio: '1', objectFit: 'cover' as const, display: 'block' },
+    thumbInfo: { padding: '6px 8px' },
+    thumbNick: { fontSize: '10px', color: '#9CA3AF', display: 'block' },
+    thumbTitle: { fontSize: '12px', fontWeight: 600, color: '#374151', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
 };
 
 export default AdminImageManagement;

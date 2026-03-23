@@ -285,7 +285,7 @@ export default function Login() {
 
       {/* 오른쪽 — 폼 패널 */}
       <div className="login-right" style={s.right}>
-        <div style={{ width: '100%', maxWidth: 400 }}>
+        <div style={{ width: '100%', maxWidth: 400, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <h1 style={s.title}>로그인</h1>
 
         {errors.general && (
@@ -492,7 +492,7 @@ const s: Record<string, React.CSSProperties> = {
   fieldError: { fontSize: 13, color: '#EF4444' },
   btnEmail: {
     width: '100%', padding: '13px', fontSize: 15, fontWeight: 700,
-    background: 'linear-gradient(135deg, #3B82F6, #6366F1)',
+    background: 'linear-gradient(135deg, #6366F1, #3B82F6)',
     color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer',
     marginTop: 4,
   },
@@ -509,7 +509,7 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
   },
   bottomLinks: {
-    display: 'flex', alignItems: 'center', gap: 10,
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
     marginTop: 24, fontSize: 14,
   },
   link: { color: '#3B82F6', fontWeight: 600, textDecoration: 'none' },

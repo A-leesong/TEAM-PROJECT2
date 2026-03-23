@@ -439,7 +439,7 @@ const s: Record<string, React.CSSProperties> = {
     background: 'linear-gradient(135deg, #3B82F6, #6366F1)',
     color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer',
   },
-  loginText: { fontSize: 14, color: '#64748B', marginTop: 20 },
+  loginText: { fontSize: 14, color: '#64748B', marginTop: 20, textAlign: 'center' as const },
   loginLink: { color: '#3B82F6', fontWeight: 600, textDecoration: 'none' },
   btnHome: {
     marginTop: 12, padding: '10px 32px', fontSize: 14, fontWeight: 700,
