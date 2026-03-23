@@ -28,8 +28,11 @@ public class Artwork {
     @Column(length = 100)
     private String topic;
 
-    @Column(name = "image_url", columnDefinition = "TEXT")
+    @Column(name = "image_url", columnDefinition = "LONGTEXT")
     private String imageUrl;
+
+    @Column(name = "user_image_data", columnDefinition = "LONGTEXT")
+    private String userImageData;
 
     @Column(name = "stroke_data", nullable = false, columnDefinition = "JSON")
     private String strokeData;

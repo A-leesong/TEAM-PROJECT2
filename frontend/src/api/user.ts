@@ -21,6 +21,7 @@ export interface ArtworkSummary {
   title: string | null
   topic: string | null
   imageUrl: string | null
+  userImageData: string | null
   status: string
   isPublic: boolean
   likeCount: number
@@ -92,4 +93,16 @@ export const completeOnboarding = (data: { name: string; phone: string; nickname
   client.post<UserProfile>('/users/me/onboarding', data).then(res => res.data)
 
 export const getMyArtworks = () =>
-  client.get<ArtworkSummary[]>('/users/me/artworks').then(res => res.data)
+  client.get<ArtworkSummary[]>('/gallery/my').then(res => res.data)
+
+export const saveArtworkToGallery = (imageUrl: string, userImageData: string, title: string, source: string) =>
+  client.post<ArtworkSummary>('/artworks', { imageUrl, userImageData, title, source }).then(res => res.data)
+
+export const toggleArtworkVisibility = (id: string) =>
+  client.patch<ArtworkSummary>(`/artworks/${id}/visibility`).then(res => res.data)
+
+export const deleteArtwork = (id: string) =>
+  client.delete(`/artworks/${id}`)
+
+export const getPublicArtworks = () =>
+  client.get<ArtworkSummary[]>('/gallery/public').then(res => res.data)

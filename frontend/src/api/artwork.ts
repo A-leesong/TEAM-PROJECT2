@@ -28,3 +28,7 @@ export const deleteArtwork = async (id: string): Promise<void> => {
 export const reportArtwork = async (id: string, data: { reason: string, description?: string }): Promise<void> => {
   await client.post(`/artworks/${id}/report`, data)
 }
+
+export const updateArtworkTitle = async (id: string, title: string): Promise<void> => {
+  await client.patch(`/artworks/${id}/title`, { title })
+}

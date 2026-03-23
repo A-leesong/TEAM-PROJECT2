@@ -4,8 +4,12 @@ import com.egag.auth.PrincipalDetails;
 import com.egag.user.dto.UserResponse;
 import com.egag.artwork.dto.ArtworkResponse;
 import com.egag.common.exception.CustomException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Map;
 

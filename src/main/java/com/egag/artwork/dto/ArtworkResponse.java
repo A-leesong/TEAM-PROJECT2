@@ -18,6 +18,7 @@ public class ArtworkResponse {
     private String title;
     private String topic;
     private String imageUrl;
+    private String userImageData;
     private List<StrokeDTO> strokeData;
     private String status;
     private boolean isPublic;

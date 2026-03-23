@@ -58,9 +58,23 @@ export default function Header({ hideOnScroll = false }: HeaderProps) {
         border: '1px solid rgba(255,255,255,0.8)',
         zIndex: 100,
       }}>
-        {/* 로고 */}
-        <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => navigate('/')} role="button">
-          <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 110 }} />
+        {/* 로고 + 갤러리 버튼 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => navigate('/')} role="button">
+            <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 110 }} />
+          </div>
+          <button
+            onClick={() => navigate('/explore')}
+            style={{
+              fontSize: 13, fontWeight: 600, color: '#6B82A0',
+              background: 'rgba(107,130,160,0.08)', border: '1px solid rgba(107,130,160,0.2)',
+              borderRadius: 20, padding: '6px 18px', cursor: 'pointer',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(107,130,160,0.16)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(107,130,160,0.08)' }}
+          >
+            갤러리
+          </button>
         </div>
 
         {/* 우측 */}

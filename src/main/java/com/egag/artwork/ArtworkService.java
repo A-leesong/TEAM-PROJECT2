@@ -1,15 +1,16 @@
 package com.egag.artwork;
 
+import com.egag.admin.Report;
+import com.egag.admin.ReportRepository;
+import com.egag.artwork.dto.ArtworkResponse;
+import com.egag.artwork.dto.ReportRequest;
 import com.egag.common.domain.Artwork;
 import com.egag.common.domain.ArtworkRepository;
 import com.egag.common.domain.User;
 import com.egag.common.domain.UserRepository;
-import com.egag.artwork.dto.ArtworkResponse;
-import com.egag.artwork.dto.ReportRequest;
-import com.egag.admin.Report;
-import com.egag.admin.ReportRepository;
-import com.egag.notification.NotificationService;
 import com.egag.common.exception.CustomException;
+import com.egag.notification.NotificationService;
+import com.egag.user.ArtworkSummary;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -30,18 +31,58 @@ public class ArtworkService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
 
+    // ── 내 갤러리에 저장 (email 기반) ──────────────────────────
+    @Transactional
+    public ArtworkSummary saveToGallery(String email, SaveArtworkRequest req) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomException(HttpStatus.UNAUTHORIZED, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."));
+
+        Artwork artwork = Artwork.builder()
+                .id(UUID.randomUUID().toString())
+                .user(user)
+                .title(req.getTitle())
+                .topic(req.getSource())
+                .imageUrl(req.getImageUrl())
+                .userImageData(req.getUserImageData())
+                .strokeData("{}")
+                .status("completed")
+                .isPublic(false)
+                .build();
+
+        return new ArtworkSummary(artworkRepository.save(artwork));
+    }
+
+    // ── 공개/비공개 토글 (email 기반, ArtworkSummary 반환) ──────
+    @Transactional
+    public ArtworkSummary toggleVisibility(String email, String artworkId) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomException(HttpStatus.UNAUTHORIZED, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."));
+
+        Artwork artwork = artworkRepository.findById(artworkId)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "ARTWORK_NOT_FOUND", "작품을 찾을 수 없습니다."));
+
+        if (!artwork.getUser().getId().equals(user.getId())) {
+            throw new CustomException(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "권한이 없습니다.");
+        }
+
+        artwork.setIsPublic(!artwork.getIsPublic());
+        return new ArtworkSummary(artworkRepository.save(artwork));
+    }
+
+    // ── 삭제 (userId 기반) ──────────────────────────────────────
     @Transactional
     public void deleteArtwork(String artworkId, String userId) {
         Artwork artwork = artworkRepository.findById(artworkId)
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "ARTWORK_NOT_FOUND", "작품을 찾을 수 없습니다."));
-        
+
         if (!artwork.getUser().getId().equals(userId)) {
             throw new CustomException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "삭제 권한이 없습니다.");
         }
-        
+
         artworkRepository.delete(artwork);
     }
 
+    // ── 공개/비공개 토글 (userId 기반, void) ───────────────────
     @Transactional
     public void togglePublic(String artworkId, String userId) {
         Artwork artwork = artworkRepository.findById(artworkId)
@@ -74,7 +115,7 @@ public class ArtworkService {
                 .description(request.getDescription())
                 .status("pending")
                 .build();
-        
+
         reportRepository.save(report);
     }
 
@@ -106,6 +147,7 @@ public class ArtworkService {
                 .title(artwork.getTitle())
                 .topic(artwork.getTopic())
                 .imageUrl(artwork.getImageUrl())
+                .userImageData(artwork.getUserImageData())
                 .status(artwork.getStatus())
                 .isPublic(artwork.getIsPublic())
                 .likeCount(artwork.getLikeCount())
@@ -113,6 +155,18 @@ public class ArtworkService {
                 .createdAt(artwork.getCreatedAt())
                 .completedAt(artwork.getCompletedAt())
                 .build();
+    }
+
+    // ── 제목 수정 ────────────────────────────────────────────────
+    @Transactional
+    public void updateTitle(String artworkId, String userId, String title) {
+        Artwork artwork = artworkRepository.findById(artworkId)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "ARTWORK_NOT_FOUND", "작품을 찾을 수 없습니다."));
+        if (!artwork.getUser().getId().equals(userId)) {
+            throw new CustomException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "권한이 없습니다.");
+        }
+        artwork.setTitle(title);
+        artworkRepository.save(artwork);
     }
 
     @Transactional
@@ -129,13 +183,12 @@ public class ArtworkService {
             artwork.setLikeCount(Math.max(0, artwork.getLikeCount() - 1));
         } else {
             Like newLike = Like.builder()
-                    .id(java.util.UUID.randomUUID().toString())
+                    .id(UUID.randomUUID().toString())
                     .user(user)
                     .artwork(artwork)
                     .build();
             likeRepository.save(newLike);
             artwork.setLikeCount(artwork.getLikeCount() + 1);
-            
             notificationService.createLikeNotification(artwork.getUser(), user, artwork);
         }
         artworkRepository.save(artwork);

@@ -13,6 +13,7 @@ export interface ArtworkResponse {
   title: string | null
   topic: string | null
   imageUrl: string | null
+  userImageData: string | null
   strokeData: StrokeData[]
   status: string
   isPublic: boolean

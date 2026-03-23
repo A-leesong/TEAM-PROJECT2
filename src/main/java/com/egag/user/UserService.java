@@ -1,5 +1,6 @@
 package com.egag.user;
 
+import com.egag.common.domain.Artwork;
 import com.egag.common.domain.ArtworkRepository;
 import com.egag.common.domain.User;
 import com.egag.common.domain.UserRepository;
@@ -9,6 +10,7 @@ import com.egag.common.exception.CustomException;
 import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -223,6 +226,7 @@ public class UserService {
                 .title(artwork.getTitle())
                 .topic(artwork.getTopic())
                 .imageUrl(artwork.getImageUrl())
+                .userImageData(artwork.getUserImageData())
                 .status(artwork.getStatus())
                 .isPublic(artwork.getIsPublic())
                 .likeCount(artwork.getLikeCount())
