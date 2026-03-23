@@ -26,4 +26,5 @@ public class ArtworkResponse {
     private Integer turnCount;
     private LocalDateTime createdAt;
     private LocalDateTime completedAt;
+    private boolean isLiked;
 }

@@ -31,6 +31,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final ArtworkRepository artworkRepository;
     private final FollowRepository followRepository;
+    private final com.egag.artwork.LikeRepository likeRepository;
     private final com.egag.notification.NotificationService notificationService;
     private final PasswordEncoder passwordEncoder;
 
@@ -144,7 +145,7 @@ public class UserService {
         }
     }
 
-    public List<ArtworkResponse> getUserArtworks(String userId, boolean onlyPublic, String status) {
+    public List<ArtworkResponse> getUserArtworks(String userId, boolean onlyPublic, String status, String currentUserId) {
         List<Artwork> artworks;
         if (onlyPublic) {
             if (status != null && !status.equals("all")) {
@@ -160,7 +161,7 @@ public class UserService {
             }
         }
         return artworks.stream()
-                .map(this::convertToArtworkResponse)
+                .map(art -> convertToArtworkResponse(art, currentUserId))
                 .collect(Collectors.toList());
     }
 
@@ -218,7 +219,12 @@ public class UserService {
         userRepository.save(following);
     }
 
-    private ArtworkResponse convertToArtworkResponse(Artwork artwork) {
+    private ArtworkResponse convertToArtworkResponse(Artwork artwork, String currentUserId) {
+        boolean isLiked = false;
+        if (currentUserId != null) {
+            isLiked = likeRepository.existsByUserIdAndArtworkId(currentUserId, artwork.getId());
+        }
+
         return ArtworkResponse.builder()
                 .id(artwork.getId())
                 .userId(artwork.getUser().getId())
@@ -233,6 +239,7 @@ public class UserService {
                 .turnCount(artwork.getTurnCount())
                 .createdAt(artwork.getCreatedAt())
                 .completedAt(artwork.getCompletedAt())
+                .isLiked(isLiked)
                 .build();
     }
 }

@@ -18,6 +18,7 @@ export interface ArtworkResponse {
   status: string
   isPublic: boolean
   likeCount: number
+  isLiked?: boolean
   turnCount: number
   createdAt: string
   completedAt: string | null
@@ -57,10 +58,6 @@ export interface NotificationResponse {
   createdAt: string
 }
 
-export interface SearchResponse {
-  artworks: ArtworkResponse[]
-  users: UserResponse[]
-}
 
 export interface ApiError {
   error: {

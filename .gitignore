@@ -47,7 +47,8 @@ frontend/node_modules/
 frontend/dist/
 *.local
 .env
-.env.*src/main/resources/application-local.yml
+.env.*
+src/main/resources/application-local.yml
 
 # 로컬 개발용 설정 파일 제외
 application-local.yml

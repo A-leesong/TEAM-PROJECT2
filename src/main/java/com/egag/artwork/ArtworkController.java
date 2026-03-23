@@ -35,8 +35,9 @@ public class ArtworkController {
 
     // ── 작품 상세 조회 ──────────────────────────────────────────
     @GetMapping("/{id}")
-    public ArtworkResponse getArtwork(@PathVariable String id) {
-        return artworkService.getArtwork(id);
+    public ArtworkResponse getArtwork(@PathVariable String id, @AuthenticationPrincipal PrincipalDetails principal) {
+        String userId = (principal != null) ? principal.getUserId() : null;
+        return artworkService.getArtwork(id, userId);
     }
 
     // ── 갤러리 탐색 ─────────────────────────────────────────────
@@ -44,8 +45,10 @@ public class ArtworkController {
     public List<ArtworkResponse> explore(
             @RequestParam(required = false, defaultValue = "latest") String sort,
             @RequestParam(required = false) String cursor,
-            @RequestParam(defaultValue = "10") int limit) {
-        return artworkService.explore(sort, cursor, limit);
+            @RequestParam(defaultValue = "10") int limit,
+            @AuthenticationPrincipal PrincipalDetails principal) {
+        String userId = (principal != null) ? principal.getUserId() : null;
+        return artworkService.explore(sort, cursor, limit, userId);
     }
 
     // ── 좋아요 토글 ─────────────────────────────────────────────

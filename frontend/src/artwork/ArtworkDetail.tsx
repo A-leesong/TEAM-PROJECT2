@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { getArtwork, toggleLikeArtwork, reportArtwork } from '../api/artwork'
 import type { ArtworkResponse } from '../types'
 import Header from '../components/Header'
+import LikeButton from '../components/LikeButton'
 
 export default function ArtworkDetail() {
   const { id } = useParams<{ id: string }>()
@@ -13,7 +14,6 @@ export default function ArtworkDetail() {
   const [loading, setLoading] = useState(true)
   const [slideIndex, setSlideIndex] = useState(0)
   const [isLiked, setIsLiked] = useState(false)
-  const [isAnimating, setIsAnimating] = useState(false)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [reportReason, setReportReason] = useState('부적절한 콘텐츠')
   const [reportDescription, setReportDescription] = useState('')
@@ -29,15 +29,12 @@ export default function ArtworkDetail() {
 
   const handleLike = async () => {
     if (!id || !artwork) return
-    setIsAnimating(true)
     try {
       await toggleLikeArtwork(id)
       setIsLiked(!isLiked)
       setArtwork({ ...artwork, likeCount: isLiked ? artwork.likeCount - 1 : artwork.likeCount + 1 })
     } catch (error) {
       console.error('Failed to toggle like:', error)
-    } finally {
-      setTimeout(() => setIsAnimating(false), 400)
     }
   }
 
@@ -106,7 +103,6 @@ export default function ArtworkDetail() {
         @keyframes blob2 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(60px)} }
         @keyframes blob3 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-40px)} }
         @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes heartPop { 0%{transform:scale(1)} 50%{transform:scale(1.3)} 100%{transform:scale(1)} }
       `}</style>
 
       <div style={s.blobs}>
@@ -206,16 +202,13 @@ export default function ArtworkDetail() {
               </div>
 
               {/* 버튼 */}
-              <button
-                onClick={handleLike}
-                style={{
-                  ...s.likeBtn,
-                  background: isLiked ? 'linear-gradient(135deg, #c47a8a, #e8a0b0)' : 'linear-gradient(135deg, #6B82A0, #8ba0c0)',
-                  animation: isAnimating ? 'heartPop 0.4s ease' : 'none',
-                }}
-              >
-                {isLiked ? '❤️ 좋아요 완료!' : '🤍 이 작품을 응원하기'}
-              </button>
+              <div style={{ width: '100%', display: 'flex' }}>
+                <LikeButton 
+                  isLiked={isLiked} 
+                  likeCount={artwork.likeCount} 
+                  onToggle={handleLike} 
+                />
+              </div>
 
               <div style={s.secondaryBtns}>
                 <button onClick={handleShare} style={s.shareBtn}>

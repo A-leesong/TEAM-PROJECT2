@@ -149,13 +149,13 @@ public class ArtworkService {
         reportRepository.save(report);
     }
 
-    public ArtworkResponse getArtwork(String id) {
+    public ArtworkResponse getArtwork(String id, String currentUserId) {
         Artwork artwork = artworkRepository.findById(id)
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "ARTWORK_NOT_FOUND", "작품을 찾을 수 없습니다."));
-        return convertToResponse(artwork);
+        return convertToResponse(artwork, currentUserId);
     }
 
-    public List<ArtworkResponse> explore(String sort, String cursor, int limit) {
+    public List<ArtworkResponse> explore(String sort, String cursor, int limit, String currentUserId) {
         List<Artwork> artworks;
         if ("popular".equals(sort)) {
             artworks = artworkRepository.findByIsPublicTrueOrderByLikeCountDesc();
@@ -165,11 +165,16 @@ public class ArtworkService {
 
         return artworks.stream()
                 .limit(limit)
-                .map(this::convertToResponse)
+                .map(art -> convertToResponse(art, currentUserId))
                 .collect(Collectors.toList());
     }
 
-    private ArtworkResponse convertToResponse(Artwork artwork) {
+    private ArtworkResponse convertToResponse(Artwork artwork, String currentUserId) {
+        boolean isLiked = false;
+        if (currentUserId != null) {
+            isLiked = likeRepository.existsByUserIdAndArtworkId(currentUserId, artwork.getId());
+        }
+
         return ArtworkResponse.builder()
                 .id(artwork.getId())
                 .userId(artwork.getUser().getId())
@@ -184,6 +189,7 @@ public class ArtworkService {
                 .turnCount(artwork.getTurnCount())
                 .createdAt(artwork.getCreatedAt())
                 .completedAt(artwork.getCompletedAt())
+                .isLiked(isLiked)
                 .build();
     }
 

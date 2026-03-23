@@ -25,7 +25,6 @@ import ArtworkDetail from './artwork/ArtworkDetail'
 import UserProfile from './artwork/UserProfile'
 import Gallery from './artwork/Gallery'
 import Notifications from './artwork/Notifications'
-import Search from './artwork/Search'
 import EditProfile from './artwork/EditProfile'
 
 // 어드민 컴포넌트들
@@ -73,7 +72,6 @@ function App() {
                 <Route path="/explore" element={<Explore />} />
                 <Route path="/artwork/:id" element={<ArtworkDetail />} />
                 <Route path="/user/:id" element={<UserProfile />} />
-                <Route path="/search" element={<Search />} />
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/pricing" element={<div>Pricing</div>} />
                 <Route path="/billing" element={<div>Billing</div>} />

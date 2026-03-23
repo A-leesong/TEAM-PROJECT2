@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getUserProfile, getUserArtworks, toggleFollowUser } from '../api/user'
+import { toggleLikeArtwork } from '../api/artwork'
 import type { UserResponse, ArtworkResponse } from '../types'
 import ArtworkCard from './ArtworkCard'
 
@@ -42,6 +43,25 @@ const UserProfile = () => {
       })
     } catch (error) {
       console.error('Failed to toggle follow:', error)
+    }
+  }
+  
+  const handleLike = async (id: string) => {
+    try {
+      await toggleLikeArtwork(id)
+      setArtworks((prev: ArtworkResponse[]) => prev.map((art: ArtworkResponse) => {
+        if (art.id === id) {
+          const isLiked = !art.isLiked
+          return {
+            ...art,
+            isLiked,
+            likeCount: isLiked ? (art.likeCount || 0) + 1 : Math.max(0, (art.likeCount || 0) - 1)
+          }
+        }
+        return art
+      }))
+    } catch (error) {
+      console.error('Failed to toggle like:', error)
     }
   }
 
@@ -93,7 +113,7 @@ const UserProfile = () => {
         <h2 className="section-title">자랑스런 그림들 🤩</h2>
         <div className="artwork-grid">
           {artworks.map((artwork) => (
-            <ArtworkCard key={artwork.id} artwork={artwork} />
+            <ArtworkCard key={artwork.id} artwork={artwork} onLike={handleLike} />
           ))}
           {artworks.length === 0 && (
             <p className="no-data">아직 이 친구가 그린 그림이 없어요. ☁️</p>

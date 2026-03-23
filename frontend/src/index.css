@@ -127,7 +127,6 @@ code {
 }
 
 .explore-page { background: linear-gradient(180deg, var(--team-pink) 0%, var(--team-beige) 40%); }
-.search-page { background: linear-gradient(180deg, var(--team-blue) 0%, var(--team-beige) 40%); }
 .user-profile-page { background: linear-gradient(180deg, #fff 0%, var(--team-beige) 100%); }
 .gallery-page { background: radial-gradient(circle at top right, var(--team-pink) 0%, var(--team-beige) 50%); }
 
@@ -520,4 +519,65 @@ code {
   max-width: 500px;
   width: 90%;
   box-shadow: var(--shadow-lg);
+}
+
+@keyframes heart-burst {
+  0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(1.5) rotate(var(--tr)); opacity: 0; }
+}
+
+.like-button-wrapper:active {
+  transform: scale(0.95);
+}
+/* --- Polaroid Variant --- */
+.artwork-card.polaroid {
+  background: #ffffff;
+  padding: 14px 14px 50px 14px;
+  border-radius: 4px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f0f0f0;
+  transition: all 0.3s ease;
+  transform-origin: center;
+}
+
+.artwork-card.polaroid:hover {
+  transform: translateY(-8px) scale(1.04) rotate(0deg) !important;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.18);
+  z-index: 10;
+}
+
+.artwork-card.polaroid .artwork-image {
+  height: auto;
+  aspect-ratio: 1/1;
+  border-radius: 0;
+  border: 1px solid #eeeeee;
+}
+
+.artwork-card.polaroid .artwork-meta {
+  border-top: none;
+  background: transparent;
+  padding: 12px 4px 0 4px;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.artwork-card.polaroid .artwork-title {
+  font-family: 'Jua', sans-serif;
+  font-size: 18px;
+  max-width: 100%;
+  text-align: center;
+  color: #333;
+}
+
+.artwork-card.polaroid .artwork-topic {
+  font-size: 11px;
+  opacity: 0.6;
+  text-align: center;
+}
+
+.artwork-card.polaroid .artwork-stats {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
 }
