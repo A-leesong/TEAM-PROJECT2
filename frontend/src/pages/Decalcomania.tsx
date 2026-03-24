@@ -326,7 +326,7 @@ export default function Decalcomania() {
   if (phase === 'confirm') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'linear-gradient(135deg, #eff8ff 0%, #dbeafe 50%, #eff8ff 100%)' }}>
-        <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 100, marginBottom: 16 }} />
+        <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 33, marginBottom: 16 }} />
         <p style={{ fontSize: 16, color: '#7dd3fc', fontWeight: 600 }}>준비 중...</p>
       </div>
     )
@@ -335,7 +335,7 @@ export default function Decalcomania() {
   return (
     <div style={{ position: 'relative' }}>
       <style>{`
-        .cv-logo { height: 100px; }
+        .cv-logo { height: 33px; }
         .cv-color-btn { width: 26px; height: 26px; }
         .cv-picker { width: 26px; height: 26px; }
         .cv-picker-inner { width: 26px; height: 26px; }
@@ -350,7 +350,7 @@ export default function Decalcomania() {
         @keyframes mirrorPulse { 0%,100%{opacity:0.25} 50%{opacity:0.7} }
         @keyframes mirrorSpin { from{stroke-dashoffset:0} to{stroke-dashoffset:-220} }
         @media (max-width: 600px) {
-          .cv-logo { height: 56px !important; }
+          .cv-logo { height: 19px !important; }
           .cv-color-btn { width: 22px !important; height: 22px !important; }
           .cv-picker { width: 22px !important; height: 22px !important; }
           .cv-picker-inner { width: 22px !important; height: 22px !important; }
@@ -364,7 +364,7 @@ export default function Decalcomania() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 20px', background: 'linear-gradient(135deg, #eff8ff 0%, #dbeafe 50%, #eff8ff 100%)', borderBottom: '1.5px solid rgba(147,197,253,0.6)', flexWrap: 'wrap', flexShrink: 0 }}>
 
           {/* 로고 */}
-          <img src="/Egag_logo-removebg.png" alt="EgAg" className="cv-logo" style={{ height: 100, cursor: 'pointer', marginRight: 4 }} onClick={() => setShowExitConfirm(true)} />
+          <img src="/Egag_logo-removebg.png" alt="EgAg" className="cv-logo" style={{ height: 33, cursor: 'pointer', marginRight: 4 }} onClick={() => setShowExitConfirm(true)} />
           <div style={div} />
 
           {/* 색상 팔레트 */}

@@ -122,7 +122,7 @@ const Policy: React.FC<PolicyProps> = ({ type }) => {
 
                 {/* 헤더 부분 (아이콘, 제목, 버전 등이 type에 따라 자동 변경) */}
                 <header style={s.header}>
-                    <span style={s.icon}>{data.icon}</span>
+                    <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 84, marginTop: 40, marginBottom: 20 }} />
                     <h1 style={s.title}>{data.title}</h1>
                     <div style={s.meta}>
                         <span>버전 {data.version}</span>
@@ -150,12 +150,12 @@ const s: Record<string, React.CSSProperties> = {
     topButton: { position: 'fixed', bottom: '40px', right: '40px', width: '55px', height: '55px', borderRadius: '50%', backgroundColor: 'rgba(255, 255, 255, 0.9)', border: '2px solid #DDD6FE', color: '#7C3AED', fontSize: '13px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 20px rgba(139, 92, 246, 0.2)', transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)', zIndex: 1000 },
     header: { textAlign: 'center', marginBottom: '50px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' },
     icon: { fontSize: '64px', display: 'block', marginBottom: '10px', filter: 'drop-shadow(0 0 8px rgba(139, 92, 246, 0.3))' },
-    title: { fontSize: '32px', fontWeight: 800, color: '#5B21B6', margin: '10px 0', letterSpacing: '-0.5px' },
-    meta: { fontSize: '15px', color: '#7C3AED', display: 'flex', justifyContent: 'center', gap: '12px', fontWeight: 600, marginTop: '5px', opacity: 0.8 },
+    title: { fontSize: '32px', fontWeight: 800, color: '#222222', margin: '10px 0', letterSpacing: '-0.5px' },
+    meta: { fontSize: '15px', color: '#333333', display: 'flex', justifyContent: 'center', gap: '12px', fontWeight: 600, marginTop: '5px', opacity: 0.8 },
     dot: { color: '#DDD6FE' },
     divider: { height: '2px', background: 'linear-gradient(to right, transparent, #DDD6FE, transparent)', margin: '20px 0 40px 0' },
     content: { whiteSpace: 'pre-wrap', lineHeight: '1.8', color: '#4C1D95', fontSize: '16px', textAlign: 'left' },
-    footer: { marginTop: '50px', textAlign: 'center', fontSize: '14px', color: '#8B5CF6', fontWeight: 700 }
+    footer: { marginTop: '50px', textAlign: 'center', fontSize: '14px', color: '#333333', fontWeight: 700 }
 };
 
 export default Policy;

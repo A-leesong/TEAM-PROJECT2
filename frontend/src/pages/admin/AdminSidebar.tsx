@@ -94,7 +94,7 @@ const s: Record<string, React.CSSProperties> = {
         transition: 'transform 0.2s',
     },
     logoImg: {
-        width: '120px',
+        width: '40px',
         height: 'auto',
         marginBottom: '8px',
         display: 'block'

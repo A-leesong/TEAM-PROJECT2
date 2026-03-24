@@ -348,7 +348,7 @@ export default function Home() {
           style={{
             position: 'absolute', top: '50%', left: '50%',
             transform: 'translate(-50%, -50%)',
-            width: 'clamp(900px, 110vw, 1500px)',
+            width: 'clamp(300px, 37vw, 500px)',
             opacity: 0.11,
             filter: 'blur(0.5px) saturate(0.6)',
             userSelect: 'none', pointerEvents: 'none',
