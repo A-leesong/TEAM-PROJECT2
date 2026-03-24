@@ -1,13 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { getArtwork, toggleLikeArtwork, reportArtwork } from '../api/artwork'
-import { toggleFollowUser, getUserProfile } from '../api/user'
-import { useAuthStore } from '../stores/useAuthStore'
-import { UserPlus, UserCheck } from 'lucide-react'
 import type { ArtworkResponse } from '../types'
 import Header from '../components/Header'
-import LikeButton from '../components/LikeButton'
-import { Link2, Check, Flag } from 'lucide-react'
 
 export default function ArtworkDetail() {
   const { id } = useParams<{ id: string }>()
@@ -18,9 +13,7 @@ export default function ArtworkDetail() {
   const [loading, setLoading] = useState(true)
   const [slideIndex, setSlideIndex] = useState(0)
   const [isLiked, setIsLiked] = useState(false)
-  const [isFollowing, setIsFollowing] = useState(false)
-  const [followerCount, setFollowerCount] = useState(0)
-  const { userId: currentUserId } = useAuthStore()
+  const [isAnimating, setIsAnimating] = useState(false)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [reportReason, setReportReason] = useState('부적절한 콘텐츠')
   const [reportDescription, setReportDescription] = useState('')
@@ -29,44 +22,22 @@ export default function ArtworkDetail() {
   useEffect(() => {
     if (!id) return
     getArtwork(id)
-      .then(data => {
-        setArtwork(data)
-        setIsLiked(data.isLiked || false)
-        setIsFollowing(data.isFollowing || false)
-        // 작가의 팔로워 수를 가져오기 위해 별도 호출 (데이터 정합성)
-        getUserProfile(data.userId).then(u => setFollowerCount(u.followerCount))
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+        .then(data => setArtwork(data))
+        .catch(console.error)
+        .finally(() => setLoading(false))
   }, [id])
 
   const handleLike = async () => {
     if (!id || !artwork) return
+    setIsAnimating(true)
     try {
       await toggleLikeArtwork(id)
       setIsLiked(!isLiked)
-      setArtwork({ ...artwork, likeCount: isLiked ? (artwork.likeCount || 0) - 1 : (artwork.likeCount || 0) + 1 })
+      setArtwork({ ...artwork, likeCount: isLiked ? artwork.likeCount - 1 : artwork.likeCount + 1 })
     } catch (error) {
       console.error('Failed to toggle like:', error)
-    }
-  }
-
-  const handleFollow = async () => {
-    if (!artwork) return
-    if (!currentUserId) {
-      if (confirm('팔로우하려면 로그인이 필요합니다. 로그인 페이지로 이동할까요?')) {
-        navigate('/login')
-      }
-      return
-    }
-    if (artwork.userId === currentUserId) return
-    
-    try {
-      await toggleFollowUser(artwork.userId)
-      setIsFollowing(!isFollowing)
-      setFollowerCount(prev => isFollowing ? prev - 1 : prev + 1)
-    } catch (error) {
-      console.error('Failed to toggle follow:', error)
+    } finally {
+      setTimeout(() => setIsAnimating(false), 400)
     }
   }
 
@@ -104,246 +75,218 @@ export default function ArtworkDetail() {
 
   if (loading) {
     return (
-      <div style={s.bg}>
-        <Header />
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <p style={{ color: '#a09ab0', fontSize: 15 }}>불러오는 중...</p>
+        <div style={s.bg}>
+          <Header />
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <p style={{ color: '#a09ab0', fontSize: 15 }}>불러오는 중...</p>
+          </div>
         </div>
-      </div>
     )
   }
 
   if (!artwork) {
     return (
-      <div style={s.bg}>
-        <Header />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-          <p style={{ fontSize: 48 }}>😢</p>
-          <p style={{ color: '#a09ab0', fontWeight: 600 }}>작품을 찾을 수 없어요</p>
-          <button onClick={() => navigate(-1)} style={s.backBtn}>돌아가기</button>
+        <div style={s.bg}>
+          <Header />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+            <p style={{ fontSize: 48 }}>😢</p>
+            <p style={{ color: '#a09ab0', fontWeight: 600 }}>작품을 찾을 수 없어요</p>
+            <button onClick={() => navigate(-1)} style={s.backBtn}>돌아가기</button>
+          </div>
         </div>
-      </div>
     )
   }
 
   const hasAI = artwork.strokeData && artwork.strokeData.some(s => s.isAI)
 
   return (
-    <div style={s.bg}>
-      <style>{`
+      <div style={s.bg}>
+        <style>{`
         @keyframes blob1 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-60px)} }
         @keyframes blob2 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(60px)} }
         @keyframes blob3 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-40px)} }
         @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-        .detail-home-btn:hover { background: linear-gradient(135deg, rgba(107,130,160,0.28) 0%, rgba(245,240,248,0.95) 100%) !important; border-color: rgba(107,130,160,0.6) !important; color: #4a6a8a !important; }
-        .detail-share-btn:hover { background: rgba(107,130,160,0.25) !important; border-color: rgba(107,130,160,0.6) !important; color: #4a6a8a !important; }
-        .detail-report-btn:hover { background: rgba(196,122,138,0.25) !important; border-color: rgba(196,122,138,0.6) !important; color: #a85a6a !important; }
+        @keyframes heartPop { 0%{transform:scale(1)} 50%{transform:scale(1.3)} 100%{transform:scale(1)} }
       `}</style>
 
-      <div style={s.blobs}>
-        <div style={{ ...s.blob, top: '-10%', left: '-8%', width: 500, height: 500, background: 'radial-gradient(circle, rgba(255,150,180,0.2) 0%, transparent 65%)', animation: 'blob1 7s ease-in-out infinite' }} />
-        <div style={{ ...s.blob, top: '20%', right: '-10%', width: 480, height: 480, background: 'radial-gradient(circle, rgba(107,130,160,0.16) 0%, transparent 65%)', animation: 'blob2 9s ease-in-out infinite' }} />
-        <div style={{ ...s.blob, bottom: '5%', left: '20%', width: 420, height: 420, background: 'radial-gradient(circle, rgba(255,220,80,0.13) 0%, transparent 65%)', animation: 'blob3 11s ease-in-out infinite' }} />
-      </div>
+        <div style={s.blobs}>
+          <div style={{ ...s.blob, top: '-10%', left: '-8%', width: 500, height: 500, background: 'radial-gradient(circle, rgba(255,150,180,0.2) 0%, transparent 65%)', animation: 'blob1 7s ease-in-out infinite' }} />
+          <div style={{ ...s.blob, top: '20%', right: '-10%', width: 480, height: 480, background: 'radial-gradient(circle, rgba(107,130,160,0.16) 0%, transparent 65%)', animation: 'blob2 9s ease-in-out infinite' }} />
+          <div style={{ ...s.blob, bottom: '5%', left: '20%', width: 420, height: 420, background: 'radial-gradient(circle, rgba(255,220,80,0.13) 0%, transparent 65%)', animation: 'blob3 11s ease-in-out infinite' }} />
+        </div>
 
-      <Header />
+        <Header />
 
+        <main style={s.main}>
+          <div style={s.layout}>
+            {/* 이미지 패널 */}
+            <div style={s.imgPanel}>
+              <div style={{ ...s.imgCard, position: 'relative' }}>
+                {/* 동화 주제 뱃지 */}
+                <div style={s.topicBadge}>{artwork.topic || 'hi!'}</div>
 
-      <main style={s.main}>
-        <div style={s.layout}>
-          {/* 이미지 패널 */}
-          <div style={s.imgPanel}>
-            <div style={{ ...s.imgCard, position: 'relative' }}>
-              {/* 동화 주제 뱃지 */}
-              <div style={s.topicBadge}>{artwork.topic || 'hi!'}</div>
+                {/* 슬라이드 */}
+                <div style={s.slideWrap}>
+                  {/* 유저 그림 슬라이드 */}
+                  <div style={{ ...s.slidePanel, opacity: slideIndex === 0 ? 1 : 0, pointerEvents: slideIndex === 0 ? 'auto' : 'none' }}>
+                    {artwork.userImageData ? (
+                        <img src={artwork.userImageData} alt="user 그림" style={s.img} />
+                    ) : (
+                        <div style={s.imgPlaceholder}>✏️</div>
+                    )}
+                  </div>
+                  {/* AI 그림 슬라이드 */}
+                  <div style={{ ...s.slidePanel, opacity: slideIndex === 1 ? 1 : 0, pointerEvents: slideIndex === 1 ? 'auto' : 'none' }}>
+                    {artwork.imageUrl ? (
+                        <img src={artwork.imageUrl} alt="AI 그림" style={s.img} />
+                    ) : (
+                        <div style={s.imgPlaceholder}>🤖</div>
+                    )}
+                  </div>
 
-              {/* 슬라이드 */}
-              <div style={s.slideWrap}>
-                {/* 유저 그림 슬라이드 */}
-                <div style={{ ...s.slidePanel, opacity: slideIndex === 0 ? 1 : 0, pointerEvents: slideIndex === 0 ? 'auto' : 'none' }}>
-                  {artwork.userImageData ? (
-                    <img src={artwork.userImageData} alt="user 그림" style={s.img} />
-                  ) : (
-                    <div style={s.imgPlaceholder}>✏️</div>
+                  {/* 화살표 */}
+                  {slideIndex > 0 && (
+                      <button style={{ ...s.slideArrow, left: 12 }} onClick={() => setSlideIndex(0)}>‹</button>
                   )}
-                </div>
-                {/* AI 그림 슬라이드 */}
-                <div style={{ ...s.slidePanel, opacity: slideIndex === 1 ? 1 : 0, pointerEvents: slideIndex === 1 ? 'auto' : 'none' }}>
-                  {artwork.imageUrl ? (
-                    <img src={artwork.imageUrl} alt="AI 그림" style={s.img} />
-                  ) : (
-                    <div style={s.imgPlaceholder}>🤖</div>
+                  {slideIndex < 1 && (
+                      <button style={{ ...s.slideArrow, right: 12 }} onClick={() => setSlideIndex(1)}>›</button>
                   )}
-                </div>
 
-                {/* 화살표 */}
-                {slideIndex > 0 && (
-                  <button style={{ ...s.slideArrow, left: 12 }} onClick={() => setSlideIndex(0)}>‹</button>
-                )}
-                {slideIndex < 1 && (
-                  <button style={{ ...s.slideArrow, right: 12 }} onClick={() => setSlideIndex(1)}>›</button>
-                )}
+                  {/* 라벨 */}
+                  <div style={s.slideLabel}>{slideIndex === 0 ? 'user 그림' : 'AI 그림'}</div>
 
-                {/* 라벨 */}
-                <div style={s.slideLabel}>{slideIndex === 0 ? 'user 그림' : 'AI 그림'}</div>
-
-                {/* 점 인디케이터 */}
-                <div style={s.dotRow}>
-                  {[0, 1].map(i => (
-                    <div key={i} style={{ ...s.dot, background: slideIndex === i ? '#fff' : 'rgba(255,255,255,0.45)' }} onClick={() => setSlideIndex(i)} />
-                  ))}
+                  {/* 점 인디케이터 */}
+                  <div style={s.dotRow}>
+                    {[0, 1].map(i => (
+                        <div key={i} style={{ ...s.dot, background: slideIndex === i ? '#fff' : 'rgba(255,255,255,0.45)' }} onClick={() => setSlideIndex(i)} />
+                    ))}
+                  </div>
                 </div>
               </div>
+              <button onClick={() => navigate('/explore')} style={s.galleryHomeBtn}>
+                ← 갤러리 홈으로 돌아가기
+              </button>
             </div>
-            <div style={s.imageTitleBar}>
-              <h2 style={s.artworkTitle}>{artwork.title}</h2>
-              <div style={s.carouselControls}>
-                <button onClick={() => navigate('/explore')} style={s.galleryHomeBtn} className="detail-home-btn">
-                  갤러리 홈으로 돌아가기
-                </button>
-              </div>
-            </div>
-          </div>
 
-          {/* 정보 패널 */}
-          <div style={s.infoPanel}>
-            {/* 메인 카드 */}
-            <div style={s.card}>
-              <h1 style={s.artTitle}>{artwork.title || stateTitle || 'hi!'}</h1>
+            {/* 정보 패널 */}
+            <div style={s.infoPanel}>
+              {/* 메인 카드 */}
+              <div style={s.card}>
+                <h1 style={s.artTitle}>{artwork.title || stateTitle || 'hi!'}</h1>
 
-              {/* 작가 정보 섹션 개선 */}
-              <div style={s.creatorSection}>
-                <Link to={`/user/${artwork.userId}`} style={s.creatorInfo}>
+                {/* 작가 */}
+                <Link to={`/user/${artwork.userId}`} style={s.creatorRow}>
                   <div style={s.creatorAvatar}>
                     {artwork.userNickname ? artwork.userNickname[0].toUpperCase() : 'A'}
                   </div>
                   <div>
-                    <p style={s.creatorLabel}>그린 사람</p>
-                    <p style={s.creatorName}>{artwork.userNickname || '익명의 화가'}</p>
-                    <p style={s.followerText}>팔로워 {followerCount}명</p>
+                    <p style={{ margin: 0, fontSize: 11, color: '#a09ab0', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' }}>그린 사람</p>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#6B82A0' }}>{artwork.userNickname || '익명의 화가'}</p>
                   </div>
                 </Link>
 
-                {/* 작가 본인이 아닐 때만 노출 (로그인 안 한 경우 포함) */}
-                {artwork.userId !== currentUserId && (
-                  <button 
-                    onClick={handleFollow}
+                {/* 통계 */}
+                <div style={s.statsGrid}>
+                  <div style={s.statBox}>
+                    <p style={s.statLabel}>그린 횟수</p>
+                    <p style={s.statValue}>{artwork.turnCount}번</p>
+                  </div>
+                  <div style={s.statBox}>
+                    <p style={s.statLabel}>좋아요</p>
+                    <p style={s.statValue}>{artwork.likeCount}개</p>
+                  </div>
+                  <div style={s.statBox}>
+                    <p style={s.statLabel}>상태</p>
+                    <p style={s.statValue}>{artwork.status === 'DRAWING' ? '그리는 중' : '완성!'}</p>
+                  </div>
+                  <div style={s.statBox}>
+                    <p style={s.statLabel}>날짜</p>
+                    <p style={s.statValue}>{new Date(artwork.createdAt).toLocaleDateString('ko-KR')}</p>
+                  </div>
+                </div>
+
+                {/* 버튼 */}
+                <button
+                    onClick={handleLike}
                     style={{
-                      ...s.followBtn,
-                      background: isFollowing ? 'rgba(107, 130, 160, 0.1)' : 'linear-gradient(135deg, #c47a8a, #6B82A0)',
-                      color: isFollowing ? '#6B82A0' : '#fff',
-                      border: isFollowing ? '1.5px solid rgba(107, 130, 160, 0.2)' : 'none',
+                      ...s.likeBtn,
+                      background: isLiked ? 'linear-gradient(135deg, #c47a8a, #e8a0b0)' : 'linear-gradient(135deg, #6B82A0, #8ba0c0)',
+                      animation: isAnimating ? 'heartPop 0.4s ease' : 'none',
                     }}
-                  >
-                    {isFollowing ? (
-                      <><UserCheck size={14} style={{ marginRight: 4 }} />팔로잉</>
-                    ) : (
-                      <><UserPlus size={14} style={{ marginRight: 4 }} />팔로우</>
-                    )}
-                  </button>
-                )}
-              </div>
-
-              {/* 통계 */}
-              <div style={s.statsGrid}>
-                <div style={s.statBox}>
-                  <p style={s.statLabel}>그린 횟수</p>
-                  <p style={s.statValue}>{artwork.turnCount}번</p>
-                </div>
-                <div style={s.statBox}>
-                  <p style={s.statLabel}>좋아요</p>
-                  <p style={s.statValue}>{artwork.likeCount}개</p>
-                </div>
-                <div style={s.statBox}>
-                  <p style={s.statLabel}>상태</p>
-                  <p style={s.statValue}>{artwork.status === 'DRAWING' ? '그리는 중' : '완성!'}</p>
-                </div>
-                <div style={s.statBox}>
-                  <p style={s.statLabel}>날짜</p>
-                  <p style={s.statValue}>{new Date(artwork.createdAt).toLocaleDateString('ko-KR')}</p>
-                </div>
-              </div>
-
-              {/* 버튼 */}
-              <div style={{ width: '100%', display: 'flex' }}>
-                <LikeButton 
-                  isLiked={isLiked} 
-                  likeCount={artwork.likeCount} 
-                  onToggle={handleLike} 
-                />
-              </div>
-
-              <div style={s.secondaryBtns}>
-                <button onClick={handleShare} style={s.shareBtn} className="detail-share-btn">
-                  {copied ? <Check size={14} strokeWidth={2.5} /> : <Link2 size={14} strokeWidth={2} />}
-                  {copied ? '복사됨!' : '공유하기'}
-                </button>
-                <button onClick={() => setIsReportModalOpen(true)} style={s.reportBtn} className="detail-report-btn">
-                  <Flag size={14} strokeWidth={2} /> 신고
-                </button>
-              </div>
-            </div>
-
-            {/* 이야기 카드 */}
-            <div style={s.storyCard}>
-              <p style={s.storyLabel}>그림 이야기</p>
-              <p style={s.storyText}>
-                {hasAI
-                  ? `'${artwork.topic}'라는 주제로 AI와 함께 번갈아 그린 작품이에요. 붓 터치 하나하나에 담긴 상상력이 놀랍지 않나요?`
-                  : `'${artwork.topic}'라는 주제로 탄생한 소중한 작품이에요. 정성스럽게 완성한 멋진 그림이에요!`
-                }
-              </p>
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* 신고 모달 */}
-      {isReportModalOpen && (
-        <div style={s.modalBackdrop} onClick={() => setIsReportModalOpen(false)}>
-          <div style={s.modalCard} onClick={e => e.stopPropagation()}>
-            <h2 style={s.modalTitle}>작품 신고하기</h2>
-            <p style={s.modalSub}>어떤 문제가 있나요? 빠르게 확인해볼게요.</p>
-
-            <form onSubmit={submitReport} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <label style={s.modalLabel}>신고 이유</label>
-                <select
-                  value={reportReason}
-                  onChange={e => setReportReason(e.target.value)}
-                  style={s.modalInput}
                 >
-                  <option value="부적절한 콘텐츠">부적절한 콘텐츠 (선정성, 폭력성 등)</option>
-                  <option value="저작권 침해">저작권 침해 의심</option>
-                  <option value="스팸/광고">스팸 또는 부적절한 홍보</option>
-                  <option value="기타">기타</option>
-                </select>
+                  {isLiked ? '❤️ 좋아요 완료!' : '🤍 이 작품을 응원하기'}
+                </button>
+
+                <div style={s.secondaryBtns}>
+                  <button onClick={handleShare} style={s.shareBtn}>
+                    {copied ? '✓ 복사됨!' : '🔗 공유하기'}
+                  </button>
+                  <button onClick={() => setIsReportModalOpen(true)} style={s.reportBtn}>
+                    🚩 신고
+                  </button>
+                </div>
               </div>
-              <div>
-                <label style={s.modalLabel}>상세 내용 (선택)</label>
-                <textarea
-                  value={reportDescription}
-                  onChange={e => setReportDescription(e.target.value)}
-                  placeholder="구체적으로 알려주시면 도움이 돼요..."
-                  style={{ ...s.modalInput, minHeight: 100, resize: 'vertical' }}
-                />
+
+              {/* 이야기 카드 */}
+              <div style={s.storyCard}>
+                <p style={s.storyLabel}>그림 이야기</p>
+                <p style={s.storyText}>
+                  {hasAI
+                      ? `'${artwork.topic}'라는 주제로 AI와 함께 번갈아 그린 작품이에요. 붓 터치 하나하나에 담긴 상상력이 놀랍지 않나요?`
+                      : `'${artwork.topic}'라는 주제로 탄생한 소중한 작품이에요. 정성스럽게 완성한 멋진 그림이에요!`
+                  }
+                </p>
               </div>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button type="submit" style={s.modalSubmit}>신고 제출</button>
-                <button type="button" onClick={() => setIsReportModalOpen(false)} style={s.modalCancel}>취소</button>
-              </div>
-            </form>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        </main>
+
+        {/* 신고 모달 */}
+        {isReportModalOpen && (
+            <div style={s.modalBackdrop} onClick={() => setIsReportModalOpen(false)}>
+              <div style={s.modalCard} onClick={e => e.stopPropagation()}>
+                <h2 style={s.modalTitle}>작품 신고하기</h2>
+                <p style={s.modalSub}>어떤 문제가 있나요? 빠르게 확인해볼게요.</p>
+
+                <form onSubmit={submitReport} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div>
+                    <label style={s.modalLabel}>신고 이유</label>
+                    <select
+                        value={reportReason}
+                        onChange={e => setReportReason(e.target.value)}
+                        style={s.modalInput}
+                    >
+                      <option value="부적절한 콘텐츠">부적절한 콘텐츠 (선정성, 폭력성 등)</option>
+                      <option value="저작권 침해">저작권 침해 의심</option>
+                      <option value="스팸/광고">스팸 또는 부적절한 홍보</option>
+                      <option value="기타">기타</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={s.modalLabel}>상세 내용 (선택)</label>
+                    <textarea
+                        value={reportDescription}
+                        onChange={e => setReportDescription(e.target.value)}
+                        placeholder="구체적으로 알려주시면 도움이 돼요..."
+                        style={{ ...s.modalInput, minHeight: 100, resize: 'vertical' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button type="submit" style={s.modalSubmit}>신고 제출</button>
+                    <button type="button" onClick={() => setIsReportModalOpen(false)} style={s.modalCancel}>취소</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+        )}
+      </div>
   )
 }
 
 const s: Record<string, React.CSSProperties> = {
   bg: {
     minHeight: '100vh',
-    background: 'var(--mesh-candy)',
+    background: 'linear-gradient(160deg, #f5f0f8 0%, #ede8f2 40%, #f0eee9 100%)',
     display: 'flex',
     flexDirection: 'column',
     position: 'relative',
@@ -484,8 +427,7 @@ const s: Record<string, React.CSSProperties> = {
     flex: 1,
     borderRadius: 28,
     overflow: 'hidden',
-    background: 'rgba(255, 255, 255, 0.7)',
-    backdropFilter: 'blur(10px)',
+    background: 'linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(245,240,248,0.85) 100%)',
     border: '1.5px solid rgba(255,255,255,0.75)',
     boxShadow: '0 8px 48px rgba(107,130,160,0.15)',
     minHeight: 360,
@@ -523,8 +465,7 @@ const s: Record<string, React.CSSProperties> = {
     gap: 16,
   },
   card: {
-    background: 'rgba(255, 255, 255, 0.7)',
-    backdropFilter: 'blur(10px)',
+    background: 'linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(245,240,248,0.85) 100%)',
     border: '1.5px solid rgba(255,255,255,0.75)',
     borderRadius: 28,
     padding: '32px 28px',
@@ -555,35 +496,15 @@ const s: Record<string, React.CSSProperties> = {
     backgroundClip: 'text',
     lineHeight: 1.3,
   },
-  creatorSection: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    background: 'rgba(107, 130, 160, 0.05)',
-    borderRadius: 20,
-    padding: '14px 18px',
-    border: '1px solid rgba(107, 130, 160, 0.1)',
-  },
-  creatorInfo: {
+  creatorRow: {
     display: 'flex',
     alignItems: 'center',
     gap: 12,
     textDecoration: 'none',
-  },
-  creatorLabel: { margin: 0, fontSize: 10, color: '#a09ab0', fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase' },
-  creatorName: { margin: '2px 0', fontSize: 15, fontWeight: 800, color: '#4a5a7a' },
-  followerText: { margin: 0, fontSize: 11, color: '#a09ab0', fontWeight: 500 },
-  followBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    padding: '8px 16px',
-    borderRadius: 12,
-    fontSize: 13,
-    fontWeight: 700,
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    boxShadow: '0 4px 12px rgba(107, 130, 160, 0.15)',
+    background: 'rgba(107,130,160,0.06)',
+    borderRadius: 16,
+    padding: '12px 16px',
+    border: '1px solid rgba(107,130,160,0.1)',
   },
   creatorAvatar: {
     width: 40,
@@ -649,10 +570,6 @@ const s: Record<string, React.CSSProperties> = {
     border: '1.5px solid rgba(107,130,160,0.2)',
     borderRadius: 14,
     cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
   },
   reportBtn: {
     padding: '11px 16px',
@@ -661,16 +578,11 @@ const s: Record<string, React.CSSProperties> = {
     color: '#c47a8a',
     background: 'rgba(196,122,138,0.08)',
     border: '1.5px solid rgba(196,122,138,0.2)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
     borderRadius: 14,
     cursor: 'pointer',
   },
   storyCard: {
-    background: 'rgba(255, 255, 255, 0.5)',
-    backdropFilter: 'blur(10px)',
+    background: 'linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(245,240,248,0.75) 100%)',
     border: '1.5px solid rgba(255,255,255,0.7)',
     borderRadius: 20,
     padding: '20px 24px',

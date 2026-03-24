@@ -275,8 +275,8 @@ export default function Login() {
           <rect width="100%" height="100%" fill="url(#egg-star-pattern)" />
         </svg>
 
-        <div style={{ ...s.logo, position: 'relative', zIndex: 10 }} onClick={() => navigate('/')}>
-          <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 200 }} />
+        <div style={{ ...s.logo, position: 'absolute', top: 150, zIndex: 10 }} onClick={() => navigate('/')}>
+          <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 67 }} />
         </div>
         <div style={{ position: 'relative', top: -95, zIndex: 1 }}>
           <AnimatedEye passwordFocused={passwordFocused} emailFocused={emailFocused} />

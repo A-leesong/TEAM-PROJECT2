@@ -225,7 +225,7 @@ export default function Header({ hideOnScroll = false }: HeaderProps) {
         {/* 로고 + 네비 버튼 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => navigate('/')} role="button">
-            <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 110 }} />
+            <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 43 }} />
           </div>
           <div ref={drawRef} style={{ position: 'relative' }}
             onMouseEnter={() => setShowDrawMenu(true)}

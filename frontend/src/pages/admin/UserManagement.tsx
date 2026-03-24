@@ -34,7 +34,7 @@ const UserManagement = () => {
 
     const [user, setUser] = useState<UserInfo | null>(null);
     const [allUsers, setAllUsers] = useState<UserInfo[]>([]);
-    const [tokenAmount, setTokenAmount] = useState(1);
+    const [tokenAmount, setTokenAmount] = useState(10); // 기본값 10으로 변경 (develop 반영)
     const [reason, setReason] = useState('결제 오류 보상');
     const [logs, setLogs] = useState<TokenLog[]>([]);
     const [loading, setLoading] = useState(true);
@@ -62,7 +62,8 @@ const UserManagement = () => {
     }, [accessToken, getAuthHeader]);
 
     useEffect(() => {
-        if (isAuthenticated && (role === 'ADMIN' || String(role) === '100') && accessToken) {
+        const isAdmin = role === 'ADMIN' || String(role) === '100';
+        if (isAuthenticated && isAdmin && accessToken) {
             void fetchData();
         }
     }, [isAuthenticated, role, accessToken, fetchData]);
@@ -89,11 +90,12 @@ const UserManagement = () => {
     }
 
     // ✅ 핸들러 함수들
-    const handleSearch = async () => {
-        if (!searchKeyword.trim()) return;
+    const handleSearch = async (manualKeyword?: string) => {
+        const keyword = manualKeyword ?? searchKeyword;
+        if (!keyword.trim()) return;
         try {
-            const res = await axios.get(`/api/admin/users`, {
-                params: { nickname: searchKeyword },
+            const res = await axios.get(`/api/admin/users/search`, {
+                params: { keyword: keyword },
                 ...getAuthHeader()
             });
             setUser(res.data);
@@ -105,14 +107,17 @@ const UserManagement = () => {
 
     const handleGiveToken = async () => {
         if (!user) return;
-        if (!confirm(`${user.nickname}님에게 ${tokenAmount} 토큰을 지급하시겠습니까?`)) return;
+        if (tokenAmount <= 0) return alert("지급할 수량을 확인해주세요.");
+        if (!confirm(`${user.nickname}님에게 ${tokenAmount} 토큰을 지급하시겠습니까?\n사유: ${reason}`)) return;
         try {
             await axios.post('/api/admin/tokens/manual', {
                 userId: user.id, amount: tokenAmount, reason: reason
             }, getAuthHeader());
             alert("지급 완료!");
-            setUser({ ...user, tokenBalance: user.tokenBalance + tokenAmount });
-            await fetchData();
+            const newBalance = user.tokenBalance + tokenAmount;
+            setUser({ ...user, tokenBalance: newBalance });
+            setAllUsers(prev => prev.map(u => u.id === user.id ? { ...u, tokenBalance: newBalance } : u));
+            void fetchData();
         } catch {
             alert("지급 실패");
         }
@@ -125,9 +130,9 @@ const UserManagement = () => {
             await axios.patch(`/api/admin/users/${targetUser.id}/status`, {}, getAuthHeader());
             alert(`성공적으로 ${action}되었습니다.`);
             if (user && user.id === targetUser.id) {
-                setUser({ ...user, isSuspended: !user.isSuspended });
+                setUser({ ...user, isSuspended: !targetUser.isSuspended });
             }
-            await fetchData();
+            setAllUsers(prev => prev.map(u => u.id === targetUser.id ? { ...u, isSuspended: !u.isSuspended } : u));
         } catch {
             alert("상태 변경 실패");
         }
@@ -162,6 +167,9 @@ const UserManagement = () => {
                             <div style={s.userBasic}>
                                 <h2 style={s.nickname}>{user.nickname}</h2>
                                 <span style={s.emailSpan}>{user.email}</span>
+                                <p style={{marginTop: '5px', fontSize: '14px', color: '#4C1D95', fontWeight: 700}}>
+                                    현재 보유량: 🪙 {user.tokenBalance.toLocaleString()} 토큰
+                                </p>
                             </div>
                             <div style={s.badgeGroup}>
                                 <span style={{ ...s.statusBadge, backgroundColor: user.isSuspended ? '#EF4444' : '#10B981' }}>
@@ -208,13 +216,16 @@ const UserManagement = () => {
                         </button>
                     ))}
                 </div>
-                <input
-                    type="text"
-                    placeholder="목록 내 결과 검색..."
-                    style={s.filterInput}
-                    value={filterSearchTerm}
-                    onChange={(e) => setFilterSearchTerm(e.target.value)}
-                />
+                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                    <span style={{fontSize: '13px', color: '#6B7280'}}>결과 내 검색:</span>
+                    <input
+                        type="text"
+                        placeholder="닉네임/이메일..."
+                        style={s.filterInput}
+                        value={filterSearchTerm}
+                        onChange={(e) => setFilterSearchTerm(e.target.value)}
+                    />
+                </div>
             </div>
 
             {/* 📋 유저 목록 테이블 */}
@@ -227,30 +238,46 @@ const UserManagement = () => {
                                 <th style={s.th}>가입일</th>
                                 <th style={s.th}>닉네임</th>
                                 <th style={s.th}>이메일</th>
+                                <th style={{...s.th, textAlign: 'center'}}>토큰 잔액</th>
                                 <th style={s.th}>상태</th>
-                                <th style={s.th}>관리</th>
+                                <th style={{...s.th, textAlign: 'center'}}>관리</th>
                             </tr>
                         </thead>
                         <tbody>
                             {loading ? (
-                                <tr><td colSpan={5} style={s.emptyTd}>데이터 로드 중...</td></tr>
-                            ) : filteredUsers.map(u => (
+                                <tr><td colSpan={6} style={s.emptyTd}>데이터 로드 중...</td></tr>
+                            ) : filteredUsers.length > 0 ? filteredUsers.map(u => (
                                 <tr key={u.id} style={s.tr}>
                                     <td style={s.td}>{new Date(u.createdAt).toLocaleDateString()}</td>
                                     <td style={{...s.td, fontWeight: 700}}>{u.nickname}</td>
                                     <td style={s.td}>{u.email}</td>
+                                    <td style={{...s.td, color: '#4C1D95', fontWeight: 700, textAlign: 'center'}}>🪙 {u.tokenBalance.toLocaleString()}</td>
                                     <td style={s.td}>
                                         <span style={{ color: u.isSuspended ? '#EF4444' : '#10B981', fontWeight: 800 }}>
                                             {u.isSuspended ? '정지' : '정상'}
                                         </span>
                                     </td>
                                     <td style={s.td}>
-                                        <button onClick={() => void handleToggleSuspension(u)} style={{ ...s.tableActionBtn, backgroundColor: u.isSuspended ? '#10B981' : '#EF4444' }}>
-                                            {u.isSuspended ? '해제' : '정지'}
-                                        </button>
+                                        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                                            <button
+                                                onClick={() => {
+                                                    setSearchKeyword(u.nickname);
+                                                    void handleSearch(u.nickname);
+                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                }}
+                                                style={{...s.tableActionBtn, backgroundColor: '#7C3AED'}}
+                                            >
+                                                지급
+                                            </button>
+                                            <button onClick={() => void handleToggleSuspension(u)} style={{ ...s.tableActionBtn, backgroundColor: u.isSuspended ? '#10B981' : '#EF4444' }}>
+                                                {u.isSuspended ? '해제' : '정지'}
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
-                            ))}
+                            )) : (
+                                <tr><td colSpan={6} style={s.emptyTd}>검색 결과가 없습니다.</td></tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -286,7 +313,7 @@ const UserManagement = () => {
                                             color: isSignup ? '#10B981' : isPurchase ? '#3B82F6' : '#6366F1',
                                             fontWeight: 800
                                         }}>
-                                            +{log.amount}
+                                            +{log.amount.toLocaleString()}
                                         </td>
                                         <td style={s.td}>
                                             <span style={{
@@ -384,9 +411,9 @@ const s: Record<string, React.CSSProperties> = {
     },
     table: { width: '100%', borderCollapse: 'collapse', fontSize: '14px' },
     th: { backgroundColor: 'rgba(249, 250, 251, 0.5)', padding: '18px', textAlign: 'left', color: '#6B7280', fontWeight: 800, borderBottom: '1px solid rgba(229, 231, 235, 0.5)' },
-    td: { padding: '18px', borderBottom: '1px solid rgba(243, 244, 246, 0.5)', color: '#374151' },
+    td: { padding: '18px', borderBottom: '1px solid rgba(243, 244, 246, 0.5)', color: '#374151', verticalAlign: 'middle' },
     tr: { transition: 'background 0.2s' },
-    tableActionBtn: { padding: '6px 14px', borderRadius: '10px', border: 'none', color: '#fff', fontSize: '12px', fontWeight: 800, cursor: 'pointer' },
+    tableActionBtn: { padding: '6px 14px', borderRadius: '10px', border: 'none', color: '#fff', fontSize: '11px', fontWeight: 800, cursor: 'pointer', minWidth: '45px' },
     emptyTd: { textAlign: 'center', padding: '100px', color: '#9CA3AF', fontSize: '16px', fontWeight: 600 }
 };
 

@@ -64,7 +64,7 @@ export default function PasswordResetConfirm() {
       <div style={s.bg}>
         <div style={s.card}>
           <div style={s.logo} onClick={() => navigate('/')} role="button">
-            <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 192 }} />
+            <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 64, marginTop: 40, marginBottom: 20 }} />
           </div>
           <h1 style={s.title}>비밀번호가 변경됐습니다</h1>
           <p style={s.desc}>새 비밀번호로 로그인해주세요.</p>
@@ -82,7 +82,7 @@ export default function PasswordResetConfirm() {
       <div style={s.bg}>
         <div style={s.card}>
           <div style={s.logo} onClick={() => navigate('/')} role="button">
-            <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 192 }} />
+            <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 64, marginTop: 40, marginBottom: 20 }} />
           </div>
           <div style={s.bigIcon}>⚠️</div>
           <h1 style={s.title}>유효하지 않은 링크</h1>
@@ -100,7 +100,7 @@ export default function PasswordResetConfirm() {
     <div style={s.bg}>
       <div style={s.card}>
         <div style={s.logo} onClick={() => navigate('/')} role="button">
-          <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 192 }} />
+          <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 64, marginTop: 40, marginBottom: 20 }} />
         </div>
 
         <h1 style={s.title}>새 비밀번호 설정</h1>

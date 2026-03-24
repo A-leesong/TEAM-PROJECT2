@@ -578,7 +578,7 @@ export default function TimeAttack() {
         @keyframes ta-shake { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-7px); } 40%,80% { transform: translateX(7px); } }
         @keyframes ta-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
         @media (max-width: 600px) {
-          .ta-logo { height: 56px !important; }
+          .ta-logo { height: 19px !important; }
           .ta-color-btn { width: 18px !important; height: 18px !important; }
           .ta-color-picker { width: 18px !important; height: 18px !important; }
           .ta-width-btn { width: 26px !important; height: 26px !important; }
@@ -607,7 +607,7 @@ export default function TimeAttack() {
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22,
               animation: 'ta-pop 0.4s ease',
             }}>
-              <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 80 }} />
+              <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 27 }} />
               <div>
                 <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: '#d4a800', letterSpacing: 2, textTransform: 'uppercase' }}>
                   Time Attack
@@ -792,7 +792,7 @@ export default function TimeAttack() {
             }}>
               <img src="/Egag_logo-removebg.png" alt="EgAg"
                 className="ta-logo"
-                style={{ height: 90, cursor: 'pointer', marginRight: 2 }}
+                style={{ height: 30, cursor: 'pointer', marginRight: 2 }}
                 onClick={() => setShowExitConfirm(true)}
               />
 

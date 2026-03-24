@@ -147,7 +147,7 @@ export default function Signup() {
       <div style={s.card}>
         {/* 로고 */}
         <div style={s.logo} onClick={() => navigate('/')}>
-          <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 48 }} />
+          <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 16 }} />
         </div>
 
         <h1 style={s.title}>회원가입</h1>

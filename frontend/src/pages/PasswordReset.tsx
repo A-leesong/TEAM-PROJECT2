@@ -72,7 +72,7 @@ export default function PasswordReset() {
       <div style={s.bg}>
         <div style={s.card}>
           <div style={s.logo} onClick={() => navigate('/')} role="button">
-            <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 192 }} />
+            <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 64, marginTop: 40, marginBottom: 20 }} />
           </div>
           <h1 style={s.title}>이메일을 확인해주세요</h1>
           <p style={s.sentDesc}>
@@ -97,7 +97,7 @@ export default function PasswordReset() {
     <div style={s.bg}>
       <div style={s.card}>
         <div style={s.logo} onClick={() => navigate('/')} role="button">
-          <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 192 }} />
+          <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 64, marginTop: 40, marginBottom: 20 }} />
         </div>
 
         <h1 style={s.title}>비밀번호 찾기</h1>

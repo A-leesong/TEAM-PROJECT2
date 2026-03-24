@@ -348,7 +348,7 @@ export default function Canvas() {
   return (
     <div style={{ position: 'relative' }}>
       <style>{`
-        .cv-logo { height: 100px; }
+        .cv-logo { height: 33px; }
         .cv-color-wrap { gap: 9px; }
         .cv-color-btn { width: 26px; height: 26px; }
         .cv-picker { width: 26px; height: 26px; }
@@ -379,7 +379,7 @@ export default function Canvas() {
         }
 
         @media (max-width: 600px) {
-          .cv-logo { height: 56px !important; }
+          .cv-logo { height: 19px !important; }
           .cv-color-wrap { gap: 5px !important; }
           .cv-color-btn { width: 22px !important; height: 22px !important; }
           .cv-picker { width: 22px !important; height: 22px !important; }
