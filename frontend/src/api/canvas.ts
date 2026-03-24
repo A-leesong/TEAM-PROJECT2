@@ -11,6 +11,9 @@ export const transformCanvas = (canvasBase64: string, style: string, subject?: s
     reason,
   })
 
+export const consumeToken = (): Promise<{ tokenBalance: number }> =>
+  client.post<{ tokenBalance: number }>('/canvas/consume-token').then(res => res.data)
+
 export const startSession = (nickname: string): Promise<{ id: string; topic: string }> =>
   client.post<{ id: string; topic: string }>('/canvas/start', { nickname }).then(res => res.data)
 

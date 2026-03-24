@@ -9,13 +9,21 @@ import com.egag.common.domain.ArtworkRepository;
 import com.egag.common.domain.User;
 import com.egag.common.domain.UserRepository;
 import com.egag.common.exception.CustomException;
+import com.egag.notification.NotificationRepository;
 import com.egag.notification.NotificationService;
 import com.egag.user.ArtworkSummary;
+import com.egag.user.FollowRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.InputStream;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -28,7 +36,9 @@ public class ArtworkService {
     private final ArtworkRepository artworkRepository;
     private final LikeRepository likeRepository;
     private final ReportRepository reportRepository;
+    private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final FollowRepository followRepository;
     private final NotificationService notificationService;
 
     // ── 내 갤러리에 저장 (email 기반) ──────────────────────────
@@ -37,16 +47,18 @@ public class ArtworkService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new CustomException(HttpStatus.UNAUTHORIZED, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."));
 
+        String savedImageUrl = downloadAndSave(req.getImageUrl());
+
         Artwork artwork = Artwork.builder()
                 .id(UUID.randomUUID().toString())
                 .user(user)
                 .title(req.getTitle())
                 .topic(req.getSource())
-                .imageUrl(req.getImageUrl())
+                .imageUrl(savedImageUrl)
                 .userImageData(req.getUserImageData())
                 .strokeData("{}")
                 .status("completed")
-                .isPublic(false)
+                .isPublic(true)
                 .build();
 
         return new ArtworkSummary(artworkRepository.save(artwork));
@@ -79,7 +91,36 @@ public class ArtworkService {
             throw new CustomException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "삭제 권한이 없습니다.");
         }
 
+        likeRepository.deleteByArtworkId(artworkId);
+        reportRepository.deleteByArtworkId(artworkId);
+        notificationRepository.deleteByArtworkId(artworkId);
         artworkRepository.delete(artwork);
+    }
+
+    private String downloadAndSave(String imageUrl) {
+        if (imageUrl == null) return imageUrl;
+        try {
+            Path dir = Paths.get("uploads/artworks");
+            Files.createDirectories(dir);
+            String filename = UUID.randomUUID() + ".png";
+            Path dest = dir.resolve(filename);
+            if (imageUrl.startsWith("data:image")) {
+                // base64 data URI 처리
+                String base64 = imageUrl.substring(imageUrl.indexOf(",") + 1);
+                byte[] bytes = java.util.Base64.getDecoder().decode(base64);
+                Files.write(dest, bytes);
+            } else if (imageUrl.startsWith("http")) {
+                try (InputStream in = new URL(imageUrl).openStream()) {
+                    Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
+                }
+            } else {
+                return imageUrl;
+            }
+            return "/uploads/artworks/" + filename;
+        } catch (Exception e) {
+            System.err.println("[downloadAndSave] 실패: " + e.getMessage());
+            return imageUrl;
+        }
     }
 
     // ── 공개/비공개 토글 (userId 기반, void) ───────────────────
@@ -119,13 +160,13 @@ public class ArtworkService {
         reportRepository.save(report);
     }
 
-    public ArtworkResponse getArtwork(String id) {
+    public ArtworkResponse getArtwork(String id, String currentUserId) {
         Artwork artwork = artworkRepository.findById(id)
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "ARTWORK_NOT_FOUND", "작품을 찾을 수 없습니다."));
-        return convertToResponse(artwork);
+        return convertToResponse(artwork, currentUserId);
     }
 
-    public List<ArtworkResponse> explore(String sort, String cursor, int limit) {
+    public List<ArtworkResponse> explore(String sort, String cursor, int limit, String currentUserId) {
         List<Artwork> artworks;
         if ("popular".equals(sort)) {
             artworks = artworkRepository.findByIsPublicTrueOrderByLikeCountDesc();
@@ -135,11 +176,18 @@ public class ArtworkService {
 
         return artworks.stream()
                 .limit(limit)
-                .map(this::convertToResponse)
+                .map(art -> convertToResponse(art, currentUserId))
                 .collect(Collectors.toList());
     }
 
-    private ArtworkResponse convertToResponse(Artwork artwork) {
+    private ArtworkResponse convertToResponse(Artwork artwork, String currentUserId) {
+        boolean isLiked = false;
+        boolean isFollowing = false;
+        if (currentUserId != null) {
+            isLiked = likeRepository.existsByUserIdAndArtworkId(currentUserId, artwork.getId());
+            isFollowing = followRepository.existsByFollowerIdAndFollowingId(currentUserId, artwork.getUser().getId());
+        }
+
         return ArtworkResponse.builder()
                 .id(artwork.getId())
                 .userId(artwork.getUser().getId())
@@ -154,6 +202,8 @@ public class ArtworkService {
                 .turnCount(artwork.getTurnCount())
                 .createdAt(artwork.getCreatedAt())
                 .completedAt(artwork.getCompletedAt())
+                .isLiked(isLiked)
+                .isFollowing(isFollowing)
                 .build();
     }
 

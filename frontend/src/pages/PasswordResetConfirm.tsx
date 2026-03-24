@@ -64,10 +64,8 @@ export default function PasswordResetConfirm() {
       <div style={s.bg}>
         <div style={s.card}>
           <div style={s.logo} onClick={() => navigate('/')} role="button">
-            <span style={s.logoIcon}>🪞</span>
-            <span style={s.logoText}>Decal<b>co</b></span>
+            <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 192 }} />
           </div>
-          <div style={s.bigIcon}>🎉</div>
           <h1 style={s.title}>비밀번호가 변경됐습니다</h1>
           <p style={s.desc}>새 비밀번호로 로그인해주세요.</p>
           <button style={s.btnPrimary} onClick={() => navigate('/login')}>
@@ -84,8 +82,7 @@ export default function PasswordResetConfirm() {
       <div style={s.bg}>
         <div style={s.card}>
           <div style={s.logo} onClick={() => navigate('/')} role="button">
-            <span style={s.logoIcon}>🪞</span>
-            <span style={s.logoText}>Decal<b>co</b></span>
+            <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 192 }} />
           </div>
           <div style={s.bigIcon}>⚠️</div>
           <h1 style={s.title}>유효하지 않은 링크</h1>
@@ -103,8 +100,7 @@ export default function PasswordResetConfirm() {
     <div style={s.bg}>
       <div style={s.card}>
         <div style={s.logo} onClick={() => navigate('/')} role="button">
-          <span style={s.logoIcon}>🪞</span>
-          <span style={s.logoText}>Decal<b>co</b></span>
+          <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 192 }} />
         </div>
 
         <h1 style={s.title}>새 비밀번호 설정</h1>
@@ -154,16 +150,16 @@ const s: Record<string, React.CSSProperties> = {
     padding: '32px 16px',
   },
   card: {
-    background: '#fff', borderRadius: 24, padding: '44px 48px',
+    background: '#fff', borderRadius: 24, padding: '0px 48px 44px',
     boxShadow: '0 8px 32px rgba(59,130,246,0.10)',
     width: '100%', maxWidth: 440,
     display: 'flex', flexDirection: 'column', alignItems: 'center',
   },
-  logo: { display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 28 },
+  logo: { display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 0 },
   logoIcon: { fontSize: 24 },
   logoText: { fontSize: 20, fontWeight: 700, color: '#1D4ED8', letterSpacing: -0.5 },
   bigIcon: { fontSize: 56, marginBottom: 16 },
-  title: { fontSize: 22, fontWeight: 800, color: '#0F172A', margin: '0 0 8px', textAlign: 'center' as const },
+  title: { fontSize: 22, fontWeight: 800, color: '#0F172A', margin: '0 0 8px', textAlign: 'center' as const, letterSpacing: 1.5 },
   subtitle: { fontSize: 14, color: '#64748B', margin: '0 0 24px', textAlign: 'center' as const },
   desc: { fontSize: 15, color: '#475569', margin: '0 0 28px', textAlign: 'center' as const },
   errorBanner: {

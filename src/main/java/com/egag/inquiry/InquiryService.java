@@ -2,6 +2,7 @@ package com.egag.inquiry;
 
 import com.egag.common.EmailService;
 import com.egag.common.domain.User;
+import com.egag.inquiry.dto.InquiryAdminResponse;
 import com.egag.inquiry.dto.InquiryRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,9 +12,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -53,6 +56,39 @@ public class InquiryService {
         // [개선안] 비동기로 메일 발송을 처리하면 사용자 응답 속도가 더 빨라집니다.
         // 현재는 try-catch로 잘 방어하셨습니다!
         sendEmailSafe(inquiry);
+    }
+
+    // ── 어드민: 전체 문의 목록 ──────────────────────────────────
+    @Transactional(readOnly = true)
+    public List<InquiryAdminResponse> getAdminInquiries(String status) {
+        List<Inquiry> inquiries = "pending".equals(status)
+                ? inquiryRepository.findByStatusOrderByCreatedAtAsc("pending")
+                : inquiryRepository.findAllByOrderByCreatedAtDesc();
+        return inquiries.stream().map(InquiryAdminResponse::from).collect(Collectors.toList());
+    }
+
+    // ── 어드민: 미응답 문의 최대 N건 ────────────────────────────
+    @Transactional(readOnly = true)
+    public List<InquiryAdminResponse> getPendingInquiries(int limit) {
+        return inquiryRepository.findByStatusOrderByCreatedAtAsc("pending")
+                .stream().limit(limit).map(InquiryAdminResponse::from).collect(Collectors.toList());
+    }
+
+    // ── 어드민: 답변 이메일 발송 ────────────────────────────────
+    @Transactional
+    public void replyToInquiry(String id, String reply, User admin) {
+        Inquiry inquiry = inquiryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("문의를 찾을 수 없습니다."));
+        inquiry.setReply(reply);
+        inquiry.setStatus("replied");
+        inquiry.setRepliedBy(admin);
+        inquiry.setRepliedAt(LocalDateTime.now());
+        inquiryRepository.save(inquiry);
+        try {
+            emailService.sendInquiryReply(inquiry.getEmail(), inquiry.getTitle(), reply);
+        } catch (Exception e) {
+            log.error("답변 메일 발송 실패 (이메일: {}): {}", inquiry.getEmail(), e.getMessage());
+        }
     }
 
     private void sendEmailSafe(Inquiry inquiry) {

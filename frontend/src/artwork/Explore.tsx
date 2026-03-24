@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from 'react'
-import { exploreArtworks } from '../api/artwork'
+import { exploreArtworks, toggleLikeArtwork } from '../api/artwork'
 import type { ArtworkResponse } from '../types'
 import { Link } from 'react-router-dom'
 import Header from '../components/Header'
+import ArtworkCard from './ArtworkCard'
 
 export default function Explore() {
   const [artworks, setArtworks] = useState<ArtworkResponse[]>([])
@@ -22,20 +23,58 @@ export default function Explore() {
     if (artworks.length === 0) return
     const el = sliderRef.current
     if (!el) return
-    const speed = 0.7
-    const scroll = () => {
-      if (!pausedRef.current) {
-        el.scrollLeft += speed
-        if (el.scrollLeft >= el.scrollWidth / 2) el.scrollLeft = 0
+    
+    // 약간의 지연 후 실행하여 레이아웃이 완전히 잡히도록 함
+    const timer = setTimeout(() => {
+      const speed = 0.8
+      const scroll = () => {
+        if (!pausedRef.current && el) {
+          el.scrollLeft += speed
+          if (el.scrollLeft >= el.scrollWidth / 2) el.scrollLeft = 0
+        }
+        animRef.current = requestAnimationFrame(scroll)
       }
       animRef.current = requestAnimationFrame(scroll)
-    }
-    animRef.current = requestAnimationFrame(scroll)
-    return () => cancelAnimationFrame(animRef.current)
-  }, [artworks])
+    }, 100)
 
-  const top3 = [...artworks].sort((a, b) => b.likeCount - a.likeCount).slice(0, 3)
-  const items = artworks.length > 0 ? [...artworks, ...artworks] : []
+    return () => {
+      clearTimeout(timer)
+      cancelAnimationFrame(animRef.current)
+    }
+  }, [artworks])
+  
+  const handleLike = async (id: string) => {
+    try {
+      await toggleLikeArtwork(id)
+      setArtworks((prev: ArtworkResponse[]) => prev.map((art: ArtworkResponse) => {
+        if (art.id === id) {
+          const isLiked = !art.isLiked
+          return {
+            ...art,
+            isLiked,
+            likeCount: isLiked ? (art.likeCount || 0) + 1 : Math.max(0, (art.likeCount || 0) - 1)
+          }
+        }
+        return art
+      }))
+    } catch (error) {
+      console.error('Failed to toggle like:', error)
+    }
+  }
+
+  const top3 = [...artworks].sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0)).slice(0, 3)
+  
+  // 무한 스크롤을 위해 적절한 아이템 리스트 생성
+  const getDisplayItems = () => {
+    if (artworks.length === 0) return []
+    // 최소 화면 너비보다 길게 아이템을 확보 (한 세트가 화면을 넘어야 함)
+    const minWidth = window.innerWidth + 600
+    const approxItemWidth = 260 // 카드 너비(240) + 간격(20)
+    const repeatCount = Math.max(1, Math.ceil(minWidth / (artworks.length * approxItemWidth)))
+    const oneSet = Array(repeatCount).fill(artworks).flat()
+    return [...oneSet, ...oneSet] // 두 세트를 이어 붙여서 끊김 없는 루프 구현
+  }
+  const items = getDisplayItems()
 
   return (
     <div style={s.bg}>
@@ -81,23 +120,14 @@ export default function Explore() {
                 <p style={s.sectionDesc}>좋아요를 가장 많이 받은 작품들이에요</p>
               </div>
               <div style={s.top3Grid}>
-                {top3.map(artwork => (
-                  <Link key={artwork.id} to={`/artwork/${artwork.id}`} className="slide-card" style={s.top3Card}>
-                    <div style={s.top3ImgWrap}>
-                      {artwork.imageUrl
-                        ? <img src={artwork.imageUrl} alt={artwork.title || ''} style={s.img} />
-                        : <div style={s.imgPlaceholder}>🎨</div>
-                      }
-                    </div>
-                    <div style={s.cardBody}>
-                      <p style={s.cardTitle}>{artwork.title || 'hi!'}</p>
-                      {artwork.topic && <p style={s.cardTopic}>{artwork.topic}</p>}
-                      <div style={s.cardMeta}>
-                        <span style={s.creatorBadge}>{artwork.userNickname || '익명'}</span>
-                        <span style={s.likeCount}>❤️ {artwork.likeCount}</span>
-                      </div>
-                    </div>
-                  </Link>
+                {top3.map((artwork, idx) => (
+                  <div key={artwork.id} style={{ 
+                    width: 312, 
+                    transform: `rotate(${((idx % 3) - 1) * 1.5}deg)`,
+                    transition: 'transform 0.3s'
+                  }}>
+                    <ArtworkCard artwork={artwork} onLike={handleLike} variant="polaroid" />
+                  </div>
                 ))}
               </div>
             </section>
@@ -117,26 +147,18 @@ export default function Explore() {
                   onMouseLeave={() => { pausedRef.current = false }}
                 >
                   {items.map((artwork, i) => (
-                    <Link key={`${artwork.id}-${i}`} to={`/artwork/${artwork.id}`} className="slide-card" style={s.card}>
-                      <div style={s.imgWrap}>
-                        {artwork.userImageData || artwork.imageUrl
-                          ? <img src={artwork.userImageData || artwork.imageUrl!} alt={artwork.title || ''} style={s.img} />
-                          : <div style={s.imgPlaceholder}>🎨</div>
-                        }
-                      </div>
-                      <div style={s.cardBody}>
-                        <p style={s.cardTitle}>{artwork.title || 'hi!'}</p>
-                        {artwork.topic && <p style={s.cardTopic}>{artwork.topic}</p>}
-                        <div style={s.cardMeta}>
-                          <span style={s.creatorBadge}>{artwork.userNickname || '익명'}</span>
-                          <span style={s.likeCount}>❤️ {artwork.likeCount}</span>
-                        </div>
-                      </div>
-                    </Link>
+                    <div key={`${artwork.id}-${i}`} style={{ 
+                      width: 240, 
+                      flexShrink: 0,
+                      transform: `rotate(${(Math.sin(i) * 2).toFixed(1)}deg)`,
+                      marginTop: i % 2 === 0 ? '10px' : '-10px'
+                    }}>
+                      <ArtworkCard artwork={artwork} onLike={handleLike} variant="polaroid" />
+                    </div>
                   ))}
                 </div>
-                <div style={{ ...s.fadeMask, left: 0, background: 'linear-gradient(to right, #ede8f2 0%, transparent 100%)' }} />
-                <div style={{ ...s.fadeMask, right: 0, background: 'linear-gradient(to left, #ede8f2 0%, transparent 100%)' }} />
+                <div style={{ ...s.fadeMask, left: 0, background: 'linear-gradient(to right, rgba(237, 232, 242, 0.8) 0%, transparent 100%)' }} />
+                <div style={{ ...s.fadeMask, right: 0, background: 'linear-gradient(to left, rgba(237, 232, 242, 0.8) 0%, transparent 100%)' }} />
               </div>
             </section>
           </>
@@ -149,7 +171,7 @@ export default function Explore() {
 const s: Record<string, React.CSSProperties> = {
   bg: {
     minHeight: '100vh',
-    background: 'linear-gradient(160deg, #f5f0f8 0%, #ede8f2 40%, #f0eee9 100%)',
+    background: 'var(--mesh-candy)',
     display: 'flex',
     flexDirection: 'column',
     position: 'relative',

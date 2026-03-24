@@ -75,8 +75,10 @@ public class UserController {
     public List<ArtworkResponse> getUserArtworks(
             @PathVariable String id,
             @RequestParam(required = false, defaultValue = "true") boolean onlyPublic,
-            @RequestParam(required = false) String status) {
-        return userService.getUserArtworks(id, onlyPublic, status);
+            @RequestParam(required = false) String status,
+            @AuthenticationPrincipal PrincipalDetails principal) {
+        String currentUserId = (principal != null) ? principal.getUserId() : null;
+        return userService.getUserArtworks(id, onlyPublic, status, currentUserId);
     }
 
     /** 내 갤러리 (필터링 포함 - 상준 파트) */
@@ -85,7 +87,7 @@ public class UserController {
             @AuthenticationPrincipal PrincipalDetails principal,
             @RequestParam(required = false) String status) {
         if (principal == null) throw new CustomException(HttpStatus.UNAUTHORIZED, "USER_NOT_FOUND", "로그인이 필요합니다.");
-        return userService.getUserArtworks(principal.getUserId(), false, status);
+        return userService.getUserArtworks(principal.getUserId(), false, status, principal.getUserId());
     }
 
     /** 팔로우 토글 (상준 파트) */

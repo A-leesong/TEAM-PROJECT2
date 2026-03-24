@@ -72,10 +72,8 @@ export default function PasswordReset() {
       <div style={s.bg}>
         <div style={s.card}>
           <div style={s.logo} onClick={() => navigate('/')} role="button">
-            <span style={s.logoIcon}>🪞</span>
-            <span style={s.logoText}>Decal<b>co</b></span>
+            <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 192 }} />
           </div>
-          <div style={s.sentIcon}>📬</div>
           <h1 style={s.title}>이메일을 확인해주세요</h1>
           <p style={s.sentDesc}>
             <strong>{form.email}</strong>로<br />
@@ -99,8 +97,7 @@ export default function PasswordReset() {
     <div style={s.bg}>
       <div style={s.card}>
         <div style={s.logo} onClick={() => navigate('/')} role="button">
-          <span style={s.logoIcon}>🪞</span>
-          <span style={s.logoText}>Decal<b>co</b></span>
+          <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 192 }} />
         </div>
 
         <h1 style={s.title}>비밀번호 찾기</h1>
@@ -169,12 +166,12 @@ const s: Record<string, React.CSSProperties> = {
     padding: '32px 16px',
   },
   card: {
-    background: '#fff', borderRadius: 24, padding: '44px 48px',
+    background: '#fff', borderRadius: 24, padding: '0px 48px 44px',
     boxShadow: '0 8px 32px rgba(59,130,246,0.10)',
     width: '100%', maxWidth: 440,
     display: 'flex', flexDirection: 'column', alignItems: 'center',
   },
-  logo: { display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 28 },
+  logo: { display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 0 },
   logoIcon: { fontSize: 24 },
   logoText: { fontSize: 20, fontWeight: 700, color: '#1D4ED8', letterSpacing: -0.5 },
   title: { fontSize: 22, fontWeight: 800, color: '#0F172A', margin: '0 0 8px', letterSpacing: 1 },
@@ -207,9 +204,9 @@ const s: Record<string, React.CSSProperties> = {
     background: 'linear-gradient(135deg, #3B82F6, #6366F1)',
     color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer',
   },
-  bottomText: { fontSize: 14, color: '#64748B', marginTop: 20 },
+  bottomText: { fontSize: 14, color: '#64748B', marginTop: 20, textAlign: 'center' as const },
   link: { color: '#3B82F6', fontWeight: 600, textDecoration: 'none' },
-  sentIcon: { fontSize: 56, marginBottom: 16 },
+  sentIcon: { fontSize: 56, marginBottom: 56 },
   sentDesc: {
     fontSize: 15, color: '#334155', textAlign: 'center' as const,
     lineHeight: 1.8, margin: '0 0 12px',

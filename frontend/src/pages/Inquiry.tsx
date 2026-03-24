@@ -84,7 +84,7 @@ export const Inquiry = () => {
 
         try {
             await axios.post('/api/inquiries', data, { headers: { 'Content-Type': 'multipart/form-data' } });
-            alert("문의가 접수되었습니다. 메일을 확인해주세요!");
+            alert("문의가 접수되었습니다.\n관리자가 (1~2일 내로) 입력하신 이메일로 답변드릴 예정입니다.");
             setFormData(prev => ({ ...prev, title: '', content: '' }));
             setFile(null);
         } catch (error) {
@@ -197,6 +197,9 @@ export const Inquiry = () => {
                         <button type="submit" disabled={isLoading} style={s.submitBtn}>
                             {isLoading ? "전송 중..." : "문의 접수하기"}
                         </button>
+                        <button type="button" style={s.homeBtn} onClick={() => window.location.href = '/'}>
+                            메인 홈으로
+                        </button>
                     </form>
                 </section>
 
@@ -281,6 +284,7 @@ const s: Record<string, React.CSSProperties> = {
     textarea: { padding: '14px 16px', borderRadius: '15px', border: '1px solid #DDD6FE', fontSize: '15px', minHeight: '150px', resize: 'vertical', outline: 'none', backgroundColor: 'rgba(255,255,255,0.5)' },
     fileUpload: { border: '2px dashed #DDD6FE', padding: '30px', borderRadius: '20px', textAlign: 'center', marginBottom: '30px' },
     submitBtn: { width: '100%', padding: '16px', background: 'linear-gradient(135deg, #8B5CF6, #6366F1)', color: '#fff', border: 'none', borderRadius: '15px', fontSize: '17px', fontWeight: 800, cursor: 'pointer', boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)' },
+    homeBtn: { width: '100%', padding: '16px', background: '#94A3B8', color: '#fff', border: 'none', borderRadius: '15px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', marginTop: '18px' },
     faqSection: { display: 'flex', flexDirection: 'column', gap: '15px' },
     faqItem: { background: 'rgba(255, 255, 255, 0.5)', borderRadius: '18px', overflow: 'hidden', border: '1px solid #DDD6FE' },
     faqQuestion: { padding: '20px 25px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700, color: '#4C1D95' },

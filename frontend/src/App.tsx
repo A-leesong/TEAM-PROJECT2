@@ -25,7 +25,6 @@ import ArtworkDetail from './artwork/ArtworkDetail'
 import UserProfile from './artwork/UserProfile'
 import Gallery from './artwork/Gallery'
 import Notifications from './artwork/Notifications'
-import Search from './artwork/Search'
 import EditProfile from './artwork/EditProfile'
 
 // 어드민 컴포넌트들
@@ -34,6 +33,8 @@ import AdminUserManagement from './pages/admin/UserManagement'; // ✅ 통합 �
 // import UserManagement from './pages/admin/UserManagement'; // 👈 삭제 (더 이상 사용 안 함)
 import PaymentManagement from './pages/admin/PaymentManagement';
 import AdminSidebar from './pages/admin/AdminSidebar';
+import AdminImageManagement from './pages/admin/AdminImageManagement';
+import AdminInquiryManagement from './pages/admin/AdminInquiryManagement';
 
 // 온보딩 가드: 카카오 로그인 후 추가 정보 입력이 필요한 경우 강제 이동
 function OnboardingGuard() {
@@ -71,7 +72,6 @@ function App() {
                 <Route path="/explore" element={<Explore />} />
                 <Route path="/artwork/:id" element={<ArtworkDetail />} />
                 <Route path="/user/:id" element={<UserProfile />} />
-                <Route path="/search" element={<Search />} />
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/pricing" element={<div>Pricing</div>} />
                 <Route path="/billing" element={<div>Billing</div>} />
@@ -101,6 +101,8 @@ function App() {
                     <Route path="users" element={<AdminUserManagement />} />
                     {/* ❌ path="all-users" 라우트 삭제됨 */}
                     <Route path="payments" element={<PaymentManagement />} />
+                    <Route path="images" element={<AdminImageManagement />} />
+                    <Route path="inquiries" element={<AdminInquiryManagement />} />
                 </Route>
 
                 {/* 404 페이지 */}

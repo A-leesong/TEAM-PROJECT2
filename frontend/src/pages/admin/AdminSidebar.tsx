@@ -15,9 +15,10 @@ const AdminSidebar = () => {
 
     const menuItems = [
         { path: '/admin/dashboard', name: '대시보드', icon: '📈' },
-        // 🛠️ 기존 '토큰 관리'와 '유저 관리'를 하나로 통합하여 명칭 변경
         { path: '/admin/users', name: '통합 유저 관리', icon: '👥' },
         { path: '/admin/payments', name: '결제 내역', icon: '💳' },
+        { path: '/admin/images', name: '메인 이미지 관리', icon: '🖼️' },
+        { path: '/admin/inquiries', name: '문의게시판', icon: '📬' },
     ];
 
     return (
