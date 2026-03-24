@@ -1,10 +1,11 @@
 package com.egag.admin.dto;
 
 import lombok.*;
+import java.util.List;
 
 @Getter
-@Builder // 👈 이게 있어야 AdminController에서 .builder()를 쓸 수 있습니다!
-@AllArgsConstructor // 👈 Builder를 쓰려면 이게 꼭 세트로 있어야 해요.
+@Builder
+@AllArgsConstructor
 @NoArgsConstructor
 public class AdminDashboardStatsResponse {
     private long totalUsers;
@@ -13,4 +14,8 @@ public class AdminDashboardStatsResponse {
     private long todaySales;
     private long suspendedUsers;
     private long activeUsers;
+
+    // ✅ 외부 파일로 만든 클래스들을 리스트로 선언
+    private List<ProductStat> topProducts;
+    private List<PaymentStat> paymentMethodRatio;
 }

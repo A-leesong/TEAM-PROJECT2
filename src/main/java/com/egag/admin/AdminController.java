@@ -40,11 +40,13 @@ public class AdminController {
         return ResponseEntity.ok(userRepository.findAll());
     }
 
-    // 🔍 4. 닉네임으로 유저 검색 API
-    @GetMapping("/users")
-    public ResponseEntity<?> searchUser(@RequestParam String nickname) {
-        return ResponseEntity.ok(userRepository.findByNickname(nickname)
-                .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다.")));
+    // 🔍 4. 유저 검색 API (수정 버전)
+    @GetMapping("/users/search") // 👈 /search 추가!
+    public ResponseEntity<?> searchUser(@RequestParam String keyword) { // 👈 nickname -> keyword로 변경
+        // 닉네임으로 먼저 찾고, 없으면 이메일로도 찾는 서비스 로직을 타는 게 CS 처리할 때 편합니다.
+        return ResponseEntity.ok(userRepository.findByNickname(keyword)
+                .orElseGet(() -> userRepository.findByEmail(keyword)
+                        .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다."))));
     }
 
     // 🚫 [추가] 8. 유저 활성/정지 상태 토글 API
