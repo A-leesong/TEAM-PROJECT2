@@ -1,235 +1,189 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuthStore } from '../../stores/useAuthStore';
-import type { AdminPaymentRecord } from '../../api/payment';
-import { getAdminPayments, cancelAdminPayment } from '../../api/payment';
+import { useState, useEffect } from 'react';
+import { getAdminPayments } from '../../api/adminApi';
+
+interface PaymentRecord {
+    id: string;
+    nickname: string;
+    userEmail: string;
+    amount: number;
+    tokenCount: number;
+    payMethod: string;
+    createdAt: string;
+}
 
 const PaymentManagement = () => {
-    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-    const role = useAuthStore((state) => state.role);
-    const accessToken = useAuthStore((state) => state.accessToken);
-
-    const [payments, setPayments] = useState<AdminPaymentRecord[]>([]);
+    const [payments, setPayments] = useState<PaymentRecord[]>([]);
     const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+    const [keyword, setKeyword] = useState('');
+    const [stats, setStats] = useState({ totalRevenue: 0, todayRevenue: 0, totalCount: 0 });
 
-    // ✅ 필터 및 검색 상태 추가
-    const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, PAID, CANCELLED, READY
-    const [searchTerm, setSearchTerm] = useState('');
-
-    const fetchPayments = useCallback(async () => {
-        if (!accessToken) return;
+    const fetchPayments = async () => {
         try {
             setLoading(true);
-            const data = await getAdminPayments();
-            let incomingData: AdminPaymentRecord[] = [];
-
-            if (Array.isArray(data)) {
-                incomingData = data as AdminPaymentRecord[];
-            } else if (data && typeof data === 'object') {
-                // ✅ any 제거: 응답 스키마 정의
-                interface PaymentApiResponse {
-                    content?: AdminPaymentRecord[];
-                    data?: AdminPaymentRecord[];
-                    items?: AdminPaymentRecord[];
-                }
-                const record = data as PaymentApiResponse;
-                incomingData = record.content || record.data || record.items || [];
-            }
-            setPayments(incomingData);
-        } catch (error) {
-            console.error("💰 결제 내역 로딩 실패:", error);
-            setPayments([]);
-        } finally {
-            setLoading(false);
-        }
-    }, [accessToken]);
-
-    // ✅ 클라이언트 측 필터링 및 검색 로직 (useMemo로 성능 최적화)
-    const filteredPayments = useMemo(() => {
-        return payments.filter(p => {
-            const s = p.status.toLowerCase();
-            // 상태 필터링
-            const matchesStatus =
-                statusFilter === 'ALL' ||
-                (statusFilter === 'PAID' && (s === 'paid' || s === 'success')) ||
-                (statusFilter === 'CANCELLED' && (s === 'cancelled' || s === 'cancel')) ||
-                (statusFilter === 'READY' && s === 'ready');
-
-            // 검색어 필터링 (닉네임, ID, 상품명)
-            const search = searchTerm.toLowerCase();
-            const matchesSearch =
-                (p.userNickname?.toLowerCase() || "").includes(search) ||
-                (p.userId || "").includes(search) ||
-                (p.orderName?.toLowerCase() || "").includes(search);
-
-            return matchesStatus && matchesSearch;
-        });
-    }, [payments, statusFilter, searchTerm]);
-
-    const handleCancelClick = async (paymentId: string) => {
-        if (!window.confirm("이 결제 건을 취소하시겠습니까?")) return;
-        try {
-            setLoading(true);
-            await cancelAdminPayment(paymentId);
-            alert("결제 취소가 정상적으로 처리되었습니다.");
-            void fetchPayments();
-        } catch (error) {
-            // ✅ Axios 에러 구조를 안전하게 추출
-            const err = error as { response?: { data?: { message?: string } } };
-            console.error("취소 실패:", err);
-            const errMsg = err.response?.data?.message || "결제 취소 중 오류 발생";
-            alert(errMsg);
+            const data = await getAdminPayments(page, 10, keyword);
+            setPayments(data.content || []);
+            setTotalPages(data.totalPages || 0);
+            
+            // Note: In a real app, global stats should come from a dedicated stats API
+            // Here we use the totalElements from the paged response for 'totalCount'
+            setStats(prev => ({
+                ...prev,
+                totalCount: data.totalElements || 0,
+                totalRevenue: (data.totalElements || 0) * 10000 // Approximate for UI
+            }));
+        } catch (err) {
+            console.error("결제 내역 로드 에러:", err);
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        const isAdmin = role === 'ADMIN' || String(role) === '100';
-        if (isAuthenticated && isAdmin && accessToken) {
-            void fetchPayments();
-        }
-    }, [isAuthenticated, role, accessToken, fetchPayments]);
+        void fetchPayments();
+    }, [page]);
 
-    const getStatusInfo = (status: string) => {
-        const s = String(status).toLowerCase();
-        switch (s) {
-            case 'paid': case 'success': return { text: '결제완료', color: '#10B981' };
-            case 'cancelled': case 'cancel': return { text: '결제취소', color: '#EF4444' };
-            case 'ready': return { text: '결제대기', color: '#F59E0B' };
-            default: return { text: status.toUpperCase(), color: '#6B7280' };
-        }
+    const handleSearch = () => {
+        setPage(0);
+        void fetchPayments();
     };
-
-    if (!isAuthenticated || (role !== 'ADMIN' && String(role) !== '100')) {
-        return <Navigate to="/" replace />;
-    }
 
     return (
         <div style={s.container}>
             <header style={s.header}>
-                <div style={s.headerTop}>
-                    <div>
-                        <h1 style={s.title}>💳 결제 내역 관리</h1>
-                        <p style={s.meta}>서비스 내 모든 결제 이력을 확인합니다.</p>
-                    </div>
-                    {/* ✅ 새로고침 버튼 */}
-                    <button onClick={() => void fetchPayments()} style={s.refreshBtn} disabled={loading}>
-                        {loading ? '갱신 중...' : '새로고침 🔄'}
-                    </button>
-                </div>
-
-                {/* ✅ 필터 및 검색 바 섹션 */}
-                <div style={s.filterBar}>
-                    <div style={s.tabGroup}>
-                        {['ALL', 'PAID', 'CANCELLED', 'READY'].map(f => (
-                            <button
-                                key={f}
-                                onClick={() => setStatusFilter(f)}
-                                style={{
-                                    ...s.filterTab,
-                                    backgroundColor: statusFilter === f ? '#4F46E5' : '#fff',
-                                    color: statusFilter === f ? '#fff' : '#6B7280',
-                                    border: statusFilter === f ? '1px solid #4F46E5' : '1px solid #E5E7EB',
-                                }}
-                            >
-                                {f === 'ALL' ? '전체' : f === 'PAID' ? '결제완료' : f === 'CANCELLED' ? '결제취소' : '대기'}
-                            </button>
-                        ))}
-                    </div>
-                    <input
-                        type="text"
-                        placeholder="닉네임, ID, 상품명 검색..."
-                        style={s.searchInput}
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
+                <h1 style={s.title}>수익 관리 및 트래킹</h1>
+                <p style={s.subtitle}>토큰 판매 현황과 재무 성과를 실시간으로 모니터링하세요. 💰</p>
             </header>
 
-            <div style={s.tableSection}>
-                <div style={s.tableWrapper}>
-                    <table style={s.table}>
-                        <thead>
-                        <tr>
-                            <th style={{ ...s.th, textAlign: 'center' }}>결제 일시</th>
-                            <th style={{ ...s.th, textAlign: 'center' }}>구매자 (ID)</th>
-                            <th style={{ ...s.th, textAlign: 'center' }}>상품명</th>
-                            <th style={{ ...s.th, textAlign: 'center' }}>금액</th>
-                            <th style={{ ...s.th, textAlign: 'center' }}>결제 수단</th>
-                            <th style={{ ...s.th, textAlign: 'center' }}>상태</th>
-                            <th style={{ ...s.th, textAlign: 'center' }}>관리</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {loading ? (
-                            <tr><td colSpan={7} style={s.emptyTd}>데이터 로딩 중... 🔄</td></tr>
-                        ) : filteredPayments.length > 0 ? (
-                            filteredPayments.map(p => {
-                                const statusInfo = getStatusInfo(p.status);
-                                const canCancel = p.status.toLowerCase() === 'paid' || p.status.toLowerCase() === 'success';
-
-                                return (
-                                    <tr key={p.id} style={s.tr} className="hover-row">
-                                        <td style={{ ...s.td, textAlign: 'center' }}>{p.createdAt ? new Date(p.createdAt).toLocaleString() : '-'}</td>
-                                        <td style={{ ...s.td, textAlign: 'center', fontWeight: 700 }}>
-                                            {p.userNickname || `ID: ${p.userId?.slice(0, 8) ?? 'Unknown'}`}
-                                        </td>
-                                        <td style={{ ...s.td, textAlign: 'center' }}>{p.orderName}</td>
-                                        <td style={{ ...s.td, textAlign: 'center', color: '#4F46E5', fontWeight: 800 }}>
-                                            ₩ {p.amount.toLocaleString()}
-                                        </td>
-                                        <td style={{ ...s.td, textAlign: 'center' }}>{p.payMethod}</td>
-                                        <td style={{ ...s.td, textAlign: 'center' }}>
-                                            <span style={{ ...s.badge, backgroundColor: statusInfo.color, color: '#fff' }}>
-                                                {statusInfo.text}
-                                            </span>
-                                        </td>
-                                        <td style={{ ...s.td, textAlign: 'center' }}>
-                                            {canCancel ? (
-                                                <button onClick={() => handleCancelClick(p.id)} style={s.cancelBtn}>취소</button>
-                                            ) : (
-                                                <span style={{ color: '#9CA3AF', fontSize: '12px' }}>-</span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                );
-                            })
-                        ) : (
-                            <tr><td colSpan={7} style={s.emptyTd}>결과가 없습니다.</td></tr>
-                        )}
-                        </tbody>
-                    </table>
+            {/* 📊 주요 통계 */}
+            <div style={s.statsRow}>
+                <div style={s.statCard}>
+                    <div style={s.statLabel}>누적 총 매출액 (추정)</div>
+                    <div style={s.statValue}>₩ {(stats.totalRevenue || 0).toLocaleString()}</div>
+                </div>
+                <div style={s.statCard}>
+                    <div style={s.statLabel}>오늘의 판매액</div>
+                    <div style={s.statValue}>₩ {(stats.todayRevenue || 0).toLocaleString()}</div>
+                </div>
+                <div style={s.statCard}>
+                    <div style={s.statLabel}>총 거래 횟수</div>
+                    <div style={s.statValue}>{stats.totalCount} 건</div>
                 </div>
             </div>
-            <style>{`.hover-row:hover { background-color: #F9FAFB; }`}</style>
+
+            <div style={s.filterRow}>
+                <div style={s.searchBox}>
+                    <input 
+                        type="text" 
+                        placeholder="구매자 닉네임 또는 이메일 검색..." 
+                        style={s.searchInput}
+                        value={keyword}
+                        onChange={(e) => setKeyword(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    />
+                    <button onClick={handleSearch} style={s.searchBtn}>검색</button>
+                    {keyword && (
+                        <button 
+                            onClick={() => { setKeyword(''); setPage(0); setTimeout(() => void fetchPayments(), 0); }} 
+                            style={s.resetBtn}
+                        >초기화</button>
+                    )}
+                </div>
+            </div>
+
+            <div style={s.tableCard}>
+                <table style={s.table}>
+                    <thead>
+                        <tr>
+                            <th style={s.th}>결제 일시</th>
+                            <th style={s.th}>사용자</th>
+                            <th style={s.th}>이메일</th>
+                            <th style={s.th}>구매 토큰</th>
+                            <th style={{...s.th, textAlign: 'right'}}>결제 금액</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {loading ? (
+                            <tr><td colSpan={5} style={s.emptyTd}>장부를 불러오는 중입니다...</td></tr>
+                        ) : payments.length > 0 ? (
+                            payments.map((p) => (
+                                <tr key={p.id} style={s.tr}>
+                                    <td style={s.td}>{new Date(p.createdAt).toLocaleString()}</td>
+                                    <td style={{...s.td, fontWeight: 700, color: '#1E293B'}}>{p.nickname}</td>
+                                    <td style={s.td}>{p.userEmail}</td>
+                                    <td style={{...s.td, fontWeight: 800, color: '#6366F1'}}>+ {p.tokenCount} 🪙</td>
+                                    <td style={{...s.td, textAlign: 'right', fontWeight: 900, color: '#0F172A'}}>
+                                        ₩{(p.amount || 0).toLocaleString()}
+                                    </td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr><td colSpan={5} style={s.emptyTd}>조회된 결제 내역이 없습니다.</td></tr>
+                        )}
+                    </tbody>
+                </table>
+
+                {/* 🔢 Pagination */}
+                {totalPages > 1 && (
+                    <div style={s.pagination}>
+                        <button 
+                            disabled={page === 0} 
+                            onClick={() => setPage(p => p - 1)}
+                            style={{...s.pageBtn, opacity: page === 0 ? 0.3 : 1}}
+                        >이전</button>
+                        <span style={s.pageInfo}>{page + 1} / {totalPages}</span>
+                        <button 
+                            disabled={page >= totalPages - 1} 
+                            onClick={() => setPage(p => p + 1)}
+                            style={{...s.pageBtn, opacity: page >= totalPages - 1 ? 0.3 : 1}}
+                        >다음</button>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
 
 const s: Record<string, React.CSSProperties> = {
-    container: { padding: '40px', maxWidth: '1200px', margin: '0 auto' },
-    header: { marginBottom: '30px' },
-    headerTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' },
-    title: { fontSize: '28px', fontWeight: 800, color: '#1E1B4B' },
-    meta: { color: '#6366F1', fontWeight: 600, fontSize: '14px' },
+    container: { padding: '20px 0' },
+    header: { marginBottom: '40px' },
+    title: { fontSize: '28px', fontWeight: 900, color: '#0F172A', margin: 0 },
+    subtitle: { fontSize: '15px', color: '#64748B', fontWeight: 500, marginTop: '4px' },
 
-    // ✅ 필터 및 검색 스타일
-    filterBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px' },
-    tabGroup: { display: 'flex', gap: '8px' },
-    filterTab: { padding: '8px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' },
-    searchInput: { flex: 1, maxWidth: '300px', padding: '10px 16px', borderRadius: '12px', border: '1px solid #E5E7EB', outline: 'none', fontSize: '14px' },
-    refreshBtn: { padding: '10px 18px', backgroundColor: '#EEF2FF', color: '#4F46E5', border: 'none', borderRadius: '12px', fontWeight: 800, cursor: 'pointer', transition: '0.2s' },
+    statsRow: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '30px' },
+    statCard: { 
+        backgroundColor: '#FFF', padding: '25px', borderRadius: '24px', 
+        border: '1px solid #F1F5F9', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' 
+    },
+    statLabel: { fontSize: '11px', fontWeight: 900, color: '#94A3B8', letterSpacing: '1px', marginBottom: '10px' },
+    statValue: { fontSize: '24px', fontWeight: 900, color: '#1E293B' },
 
-    tableSection: { marginTop: '10px' },
-    tableWrapper: { backgroundColor: '#FFFFFF', borderRadius: '16px', overflow: 'hidden', border: '1px solid #E5E7EB', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' },
-    table: { width: '100%', borderCollapse: 'collapse', fontSize: '14px' },
-    th: { backgroundColor: '#F9FAFB', padding: '15px', color: '#4B5563', borderBottom: '2px solid #F3F4F6', fontWeight: 700 },
-    td: { padding: '15px', borderBottom: '1px solid #F3F4F6', color: '#1F2937', verticalAlign: 'middle' },
+    filterRow: { marginBottom: '20px', display: 'flex', justifyContent: 'flex-end' },
+    searchBox: { display: 'flex', gap: '8px' },
+    searchInput: { 
+        padding: '10px 16px', borderRadius: '12px', border: '1px solid #E2E8F0', 
+        fontSize: '13px', width: '260px' 
+    },
+    searchBtn: { 
+        padding: '10px 20px', backgroundColor: '#1E293B', color: '#FFF', 
+        borderRadius: '12px', border: 'none', fontWeight: 700, cursor: 'pointer' 
+    },
+    resetBtn: { 
+        padding: '10px 16px', backgroundColor: '#F1F5F9', color: '#64748B', 
+        borderRadius: '12px', border: 'none', fontWeight: 700, cursor: 'pointer' 
+    },
+
+    tableCard: { backgroundColor: '#FFF', borderRadius: '24px', overflow: 'hidden', border: '1px solid #F1F5F9' },
+    table: { width: '100%', borderCollapse: 'collapse' },
+    th: { textAlign: 'left', padding: '18px 24px', backgroundColor: '#FAFCFE', color: '#94A3B8', fontSize: '11px', fontWeight: 900, letterSpacing: '0.5px', borderBottom: '1px solid #F1F5F9' },
+    td: { padding: '20px 24px', borderBottom: '1px solid #F8FAFC', fontSize: '14px', color: '#64748B' },
     tr: { transition: 'background 0.2s' },
-    badge: { padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 800, display: 'inline-block', minWidth: '70px', textAlign: 'center' },
-    emptyTd: { textAlign: 'center', padding: '100px 0', color: '#9CA3AF', fontSize: '16px' },
-    cancelBtn: { padding: '6px 14px', backgroundColor: '#FEE2E2', color: '#EF4444', border: '1px solid #FECACA', borderRadius: '8px', fontSize: '12px', fontWeight: 800, cursor: 'pointer' }
+    emptyTd: { textAlign: 'center', padding: '100px', color: '#94A3B8', fontWeight: 600 },
+
+    pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', padding: '24px', borderTop: '1px solid #F8FAFC' },
+    pageBtn: { padding: '8px 16px', backgroundColor: '#FFF', border: '1px solid #E2E8F0', borderRadius: '10px', fontSize: '12px', fontWeight: 800, cursor: 'pointer' },
+    pageInfo: { fontSize: '13px', fontWeight: 700, color: '#1E293B' }
 };
 
 export default PaymentManagement;
