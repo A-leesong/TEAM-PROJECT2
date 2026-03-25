@@ -71,11 +71,12 @@ public class NotificationService {
                 .user(recipient)
                 .actor(admin)
                 .type("INQUIRY_REPLY")
-                .reason(inquiryTitle) // 문의 제목을 사유 필드에 임시 저장하거나 별도 필드 활용 가능
+                .message(inquiryTitle)
                 .build();
         notificationRepository.save(notification);
     }
 
+    @Transactional(readOnly = true)
     public List<NotificationResponse> getNotifications(String userId) {
         return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
                 .map(this::convertToResponse)

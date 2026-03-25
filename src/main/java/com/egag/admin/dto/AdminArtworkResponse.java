@@ -14,4 +14,7 @@ public class AdminArtworkResponse {
     private String title;
     private String imageUrl;
     private String nickname;
+    private Boolean isVisible;
+    private java.time.LocalDateTime createdAt;
+    private Integer likeCount;
 }

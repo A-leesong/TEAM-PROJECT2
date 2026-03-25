@@ -1,11 +1,13 @@
 package com.egag.admin;
 
 import com.egag.admin.dto.*;
+import com.egag.artwork.LikeRepository;
 import com.egag.common.domain.Artwork;
 import com.egag.common.domain.ArtworkRepository;
 import com.egag.common.domain.User;
 import com.egag.common.domain.UserRepository;
 import com.egag.inquiry.InquiryRepository;
+import com.egag.notification.NotificationRepository;
 import com.egag.payment.PaymentRepository;
 import com.egag.payment.TokenLogRepository;
 import com.egag.notification.NotificationService;
@@ -30,10 +32,12 @@ public class AdminService {
     private final AdminActionLogRepository logRepository;
     private final PaymentRepository paymentRepository;
     private final NotificationService notificationService;
+    private final NotificationRepository notificationRepository;
     private final ArtworkRepository artworkRepository;
     private final InquiryRepository inquiryRepository;
     private final ReportRepository reportRepository;
     private final MainImageRepository mainImageRepository;
+    private final LikeRepository likeRepository;
 
     @Transactional(readOnly = true)
     public AdminDashboardStatsResponse getRealDashboardStats() {
@@ -150,7 +154,7 @@ public class AdminService {
     @Transactional(readOnly = true)
     public List<MainBannerResponse> getMainImages() {
         List<MainBannerResponse> responses = new java.util.ArrayList<>();
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < 10; i++) {
             final int slot = i;
             MainBannerResponse res = mainImageRepository.findBySlotNumber(slot)
                     .map(MainBannerResponse::from)
@@ -183,6 +187,20 @@ public class AdminService {
     }
 
     @Transactional
+    public void clearMainImageSlot(Integer slotNumber) {
+        mainImageRepository.findBySlotNumber(slotNumber)
+                .ifPresent(mainImageRepository::delete);
+    }
+
+    @Transactional
+    public void deleteArtwork(String artworkId) {
+        likeRepository.deleteByArtworkId(artworkId);
+        reportRepository.deleteByArtworkId(artworkId);
+        notificationRepository.deleteByArtworkId(artworkId);
+        artworkRepository.deleteById(artworkId);
+    }
+
+    @Transactional
     public void toggleArtworkVisibility(String artworkId) {
         Artwork artwork = artworkRepository.findById(artworkId)
                 .orElseThrow(() -> new RuntimeException("작품을 찾을 수 없습니다."));
@@ -191,7 +209,7 @@ public class AdminService {
 
     @Transactional(readOnly = true)
     public Page<AdminArtworkResponse> getAdminArtworks(Pageable pageable) {
-        return artworkRepository.findAllWithUser(pageable).map(a -> {
+        return artworkRepository.findAllWithUserOrderByLikeCountDesc(pageable).map(a -> {
             String imageUrl = a.getImageUrl();
             if (imageUrl == null || imageUrl.isEmpty()) {
                 imageUrl = a.getUserImageData();
@@ -201,6 +219,9 @@ public class AdminService {
                     .title(a.getTitle())
                     .imageUrl(imageUrl)
                     .nickname(a.getUser() != null ? a.getUser().getNickname() : "Unknown")
+                    .isVisible(a.getIsPublic())
+                    .createdAt(a.getCreatedAt())
+                    .likeCount(a.getLikeCount() != null ? a.getLikeCount() : 0)
                     .build();
         });
     }

@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/useAuthStore'
 import { Pencil, Layers, Ticket, Sparkles, Timer, ArrowRight, MessageCircle, ChevronUp, CalendarCheck } from 'lucide-react'
 import Header from '../components/Header'
 import { exploreArtworks } from '../api/artwork'
+import { getAdminMainImages } from '../api/adminApi'
 import type { ArtworkResponse } from '../types'
 import AttendanceModal, { getAttendDismissKey } from '../components/AttendanceModal'
 import { getTodayAttendance } from '../api/user'
@@ -19,13 +20,16 @@ function ArtworkCarousel() {
   const pausedRef = useRef(false)
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('admin_main_images')
-      if (saved) {
-        const parsed: (string | null)[] = JSON.parse(saved)
-        setAdminImages(parsed.filter(Boolean) as string[])
-      }
-    } catch {}
+    getAdminMainImages()
+      .then(banners => {
+        const urls = banners
+          .filter(b => b.imageUrl)
+          .sort((a, b) => a.slotNumber - b.slotNumber)
+          .map(b => b.imageUrl)
+          .slice(0, 10)
+        setAdminImages(urls)
+      })
+      .catch(() => {})
 
     exploreArtworks('latest', undefined, 50)
       .then(data => setArtworks(data.filter(a => a.imageUrl).slice(0, 10)))
