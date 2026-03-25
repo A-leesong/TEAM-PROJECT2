@@ -54,6 +54,7 @@ export default function Notifications() {
   const goToDetail = () => {
     if (!selected) return
     if (selected.type === 'FOLLOW') navigate(`/user/${selected.actorId}`)
+    else if (selected.type === 'INQUIRY_REPLY') navigate('/contact')
     else if (selected.artworkId) navigate(`/artwork/${selected.artworkId}`)
     setSelected(null); setSelectedArtImageUrl(null)
   }
