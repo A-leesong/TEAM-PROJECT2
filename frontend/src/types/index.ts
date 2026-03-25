@@ -56,6 +56,8 @@ export interface NotificationResponse {
   artworkId: string | null
   artworkTitle: string | null
   message: string | null
+  amount?: number
+  reason?: string
   isRead: boolean
   createdAt: string
 }

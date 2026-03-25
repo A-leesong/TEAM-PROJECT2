@@ -1,7 +1,7 @@
 package com.egag.payment;
 
-import com.egag.admin.dto.ProductStat;  // ✅ 독립시킨 클래스 임포트
-import com.egag.admin.dto.PaymentStat;  // ✅ 독립시킨 클래스 임포트
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -22,13 +22,9 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
     @Query("SELECT SUM(p.amount) FROM Payment p WHERE p.createdAt >= :date")
     Long sumAmountByCreatedAtAfter(@Param("date") LocalDateTime date);
 
-    // 🔥 인기 패키지 순위 (ProductStat 클래스 직접 사용)
-    @Query("SELECT new com.egag.admin.dto.ProductStat(p.packageName, COUNT(p)) " +
-            "FROM Payment p GROUP BY p.packageName ORDER BY COUNT(p) DESC")
-    List<ProductStat> findTopProducts();
+    // ── 어드민 리스트 조회 (페이징 & 검색) ──────────────────────
+    Page<Payment> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
-    // 💳 결제 수단 비율 (PaymentStat 클래스 직접 사용)
-    @Query("SELECT new com.egag.admin.dto.PaymentStat(p.payMethod, COUNT(p)) " +
-            "FROM Payment p GROUP BY p.payMethod")
-    List<PaymentStat> findPaymentMethodRatio();
+    @Query("SELECT p FROM Payment p WHERE p.user.nickname LIKE %:keyword% OR p.user.email LIKE %:keyword%")
+    Page<Payment> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 }

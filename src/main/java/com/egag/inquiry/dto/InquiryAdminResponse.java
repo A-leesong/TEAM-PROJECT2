@@ -14,6 +14,7 @@ public class InquiryAdminResponse {
     private String category;
     private String title;
     private String content;
+    private String authorNickname;
     private String status;
     private String reply;
     private LocalDateTime createdAt;
@@ -22,6 +23,7 @@ public class InquiryAdminResponse {
     public static InquiryAdminResponse from(Inquiry inquiry) {
         return InquiryAdminResponse.builder()
                 .id(inquiry.getId())
+                .authorNickname(inquiry.getUser() != null ? inquiry.getUser().getNickname() : "비회원")
                 .email(inquiry.getEmail())
                 .category(inquiry.getCategory())
                 .title(inquiry.getTitle())

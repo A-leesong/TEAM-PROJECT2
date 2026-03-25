@@ -14,8 +14,8 @@ public class AdminDashboardStatsResponse {
     private long todaySales;
     private long suspendedUsers;
     private long activeUsers;
+    private long activeArtworks;
+    private long pendingInquiries;
 
-    // ✅ 외부 파일로 만든 클래스들을 리스트로 선언
-    private List<ProductStat> topProducts;
-    private List<PaymentStat> paymentMethodRatio;
+    private List<ArtworkStat> topArtworks;
 }

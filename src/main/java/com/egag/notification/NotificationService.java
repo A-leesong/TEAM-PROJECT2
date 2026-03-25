@@ -41,6 +41,41 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
+    public void createFinishNotification(User recipient, Artwork artwork) {
+        // 작품 완성 알림은 본인에게 가는 것이므로 id 체크 제외
+        Notification notification = Notification.builder()
+                .id(java.util.UUID.randomUUID().toString())
+                .user(recipient)
+                .actor(recipient) // 본인이 그린 것이므로 actor도 본인
+                .artwork(artwork)
+                .type("FINISHED")
+                .build();
+        notificationRepository.save(notification);
+    }
+
+    public void createTokenNotification(User recipient, User actor, int amount, String reason) {
+        Notification notification = Notification.builder()
+                .id(java.util.UUID.randomUUID().toString())
+                .user(recipient)
+                .actor(actor)
+                .type("TOKEN")
+                .amount(amount)
+                .reason(reason)
+                .build();
+        notificationRepository.save(notification);
+    }
+
+    public void createInquiryReplyNotification(User recipient, User admin, String inquiryId, String inquiryTitle) {
+        Notification notification = Notification.builder()
+                .id(java.util.UUID.randomUUID().toString())
+                .user(recipient)
+                .actor(admin)
+                .type("INQUIRY_REPLY")
+                .reason(inquiryTitle) // 문의 제목을 사유 필드에 임시 저장하거나 별도 필드 활용 가능
+                .build();
+        notificationRepository.save(notification);
+    }
+
     public List<NotificationResponse> getNotifications(String userId) {
         return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
                 .map(this::convertToResponse)
@@ -93,6 +128,8 @@ public class NotificationService {
                 .artworkId(n.getArtwork() != null ? n.getArtwork().getId() : null)
                 .artworkTitle(n.getArtwork() != null ? n.getArtwork().getTitle() : null)
                 .message(n.getMessage())
+                .amount(n.getAmount())
+                .reason(n.getReason())
                 .isRead(n.getIsRead())
                 .createdAt(n.getCreatedAt())
                 .build();

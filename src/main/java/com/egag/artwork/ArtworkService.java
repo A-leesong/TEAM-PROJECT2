@@ -57,7 +57,9 @@ public class ArtworkService {
                 .isPublic(true)
                 .build();
 
-        return new ArtworkSummary(artworkRepository.save(artwork));
+        Artwork savedArtwork = artworkRepository.save(artwork);
+        notificationService.createFinishNotification(user, savedArtwork);
+        return new ArtworkSummary(savedArtwork);
     }
 
     // ── 공개/비공개 토글 (email 기반, ArtworkSummary 반환) ──────

@@ -7,6 +7,9 @@ import com.egag.inquiry.dto.InquiryAdminResponse;
 import com.egag.inquiry.dto.InquiryRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -58,20 +61,27 @@ public class InquiryService {
         sendEmailSafe(inquiry);
     }
 
-    // ── 어드민: 전체 문의 목록 ──────────────────────────────────
+    // ── 어드민: 전체 문의 목록 (페이징 & 검색 추가) ────────────────
     @Transactional(readOnly = true)
-    public List<InquiryAdminResponse> getAdminInquiries(String status) {
-        List<Inquiry> inquiries = "pending".equals(status)
-                ? inquiryRepository.findByStatusOrderByCreatedAtAsc("pending")
-                : inquiryRepository.findAllByOrderByCreatedAtDesc();
-        return inquiries.stream().map(InquiryAdminResponse::from).collect(Collectors.toList());
+    public Page<InquiryAdminResponse> getAdminInquiries(String status, String keyword, Pageable pageable) {
+        Page<Inquiry> inquiries;
+        
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            inquiries = inquiryRepository.findByTitleContainingOrContentContainingOrderByCreatedAtDesc(keyword, keyword, pageable);
+        } else if ("pending".equals(status)) {
+            inquiries = inquiryRepository.findByStatusOrderByCreatedAtAsc("pending", pageable);
+        } else {
+            inquiries = inquiryRepository.findAllByOrderByCreatedAtDesc(pageable);
+        }
+        
+        return inquiries.map(InquiryAdminResponse::from);
     }
 
-    // ── 어드민: 미응답 문의 최대 N건 ────────────────────────────
+    // ── 어드민: 미응답 문의 최대 N건 (대시보드용) ──────────────────
     @Transactional(readOnly = true)
     public List<InquiryAdminResponse> getPendingInquiries(int limit) {
-        return inquiryRepository.findByStatusOrderByCreatedAtAsc("pending")
-                .stream().limit(limit).map(InquiryAdminResponse::from).collect(Collectors.toList());
+        return inquiryRepository.findByStatusOrderByCreatedAtAsc("pending", PageRequest.of(0, limit))
+                .getContent().stream().map(InquiryAdminResponse::from).collect(Collectors.toList());
     }
 
     // ── 어드민: 답변 이메일 발송 ────────────────────────────────
@@ -84,9 +94,10 @@ public class InquiryService {
         inquiry.setRepliedBy(admin);
         inquiry.setRepliedAt(LocalDateTime.now());
         inquiryRepository.save(inquiry);
+        // 회원인 경우 인앱 알림 생성
         if (inquiry.getUser() != null) {
             try {
-                notificationService.createInquiryReplyNotification(inquiry.getUser(), inquiry.getTitle());
+                notificationService.createInquiryReplyNotification(inquiry.getUser(), admin, inquiry.getId(), inquiry.getTitle());
             } catch (Exception e) {
                 log.error("문의 답변 알림 발송 실패: {}", e.getMessage());
             }

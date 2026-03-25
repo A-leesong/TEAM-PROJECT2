@@ -1,344 +1,251 @@
 import { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
-import { Navigate, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../../stores/useAuthStore';
-import {
-    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-    LineChart, Line
+import { 
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
+    ResponsiveContainer, AreaChart, Area 
 } from 'recharts';
-
-interface PendingInquiry {
-    id: string;
-    email: string;
-    category: string;
-    title: string;
-    content: string;
-    createdAt: string;
-}
-
-// 📈 대시보드 데이터 타입
-interface DashboardStats {
-    totalUsers: number;
-    todayNewUsers: number;
-    totalSales: number;
-    todaySales: number;
-    suspendedUsers: number;
-    activeUsers: number;
-}
-
-const CATEGORY_LABELS: Record<string, string> = {
-    payment: '결제', account: '계정', bug: '버그', etc: '기타',
-};
-
-interface CategoryStat { name: string; count: number; }
-interface DateStat { date: string; count: number; }
+import { getAdminDashboardStats, getAdminWeeklyStats, type WeeklyStat, type ArtworkStat } from '../../api/adminApi';
+import { useAuthStore } from '../../stores/useAuthStore';
 
 const AdminDashboard = () => {
-    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-    const role = useAuthStore((state) => state.role);
-    const nickname = useAuthStore((state) => state.nickname);
-    const accessToken = useAuthStore((state) => state.accessToken);
-    const navigate = useNavigate();
-
-    const [stats, setStats] = useState<DashboardStats | null>(null);
+    const { accessToken } = useAuthStore();
+    const [stats, setStats] = useState({
+        totalUsers: 0,
+        activeArtworks: 0,
+        pendingInquiries: 0,
+        todaySales: 0,
+        topArtworks: [] as ArtworkStat[]
+    });
+    const [weeklyData, setWeeklyData] = useState<WeeklyStat[]>([]);
     const [loading, setLoading] = useState(true);
-    const [pendingInquiries, setPendingInquiries] = useState<PendingInquiry[]>([]);
-    const [categoryStats, setCategoryStats] = useState<CategoryStat[]>([]);
-    const [artworkByDate, setArtworkByDate] = useState<DateStat[]>([]);
-    const [replyMap, setReplyMap] = useState<Record<string, string>>({});
-    const [expandedId, setExpandedId] = useState<string | null>(null);
-    const [submitting, setSubmitting] = useState<string | null>(null);
 
-    // 🔄 통계 데이터 가져오기
-    const fetchStats = useCallback(async () => {
+    const fetchDashboardData = useCallback(async () => {
+        if (!accessToken) return;
         try {
             setLoading(true);
-            const token = useAuthStore.getState().accessToken; // 👈 스토어에서 직접 토큰 가져오기
-
-            const res = await axios.get('/api/admin/dashboard/stats', {
-                headers: {
-                    Authorization: `Bearer ${token}` // 👈 헤더에 토큰 실어주기
-                }
-            });
-            setStats(res.data);
-        } catch (err) {
-            console.error("통계 데이터 로딩 실패:", err);
+            const [statsData, weekly] = await Promise.all([
+                getAdminDashboardStats(),
+                getAdminWeeklyStats()
+            ]);
+            setStats(statsData);
+            setWeeklyData(weekly || []);
+        } catch (error) {
+            console.error("Dashboard data error:", error);
         } finally {
             setLoading(false);
-        }
-    }, []);
-
-    const fetchPendingInquiries = useCallback(async () => {
-        try {
-            const res = await axios.get('/api/admin/inquiries/pending?limit=5', {
-                headers: { Authorization: `Bearer ${accessToken}` }
-            });
-            setPendingInquiries(res.data);
-        } catch (e) {
-            console.error('문의 로딩 실패', e);
-        }
-    }, [accessToken]);
-
-    const handleReply = async (id: string) => {
-        const reply = replyMap[id]?.trim();
-        if (!reply) return;
-        setSubmitting(id);
-        try {
-            await axios.post(`/api/admin/inquiries/${id}/reply`, { reply }, {
-                headers: { Authorization: `Bearer ${accessToken}` }
-            });
-            setPendingInquiries(prev => prev.filter(i => i.id !== id));
-            setReplyMap(prev => { const n = { ...prev }; delete n[id]; return n; });
-            setExpandedId(null);
-        } catch {
-            alert('답변 등록에 실패했습니다.');
-        } finally {
-            setSubmitting(null);
-        }
-    };
-
-    const fetchChartData = useCallback(async () => {
-        const headers = { Authorization: `Bearer ${accessToken}` };
-        try {
-            const [catRes, dateRes] = await Promise.all([
-                axios.get('/api/admin/stats/inquiry-categories', { headers }),
-                axios.get('/api/admin/stats/artwork-by-date', { headers }),
-            ]);
-            const catData: CategoryStat[] = Object.entries(catRes.data as Record<string, number>).map(
-                ([key, count]) => ({ name: CATEGORY_LABELS[key] ?? key, count })
-            );
-            setCategoryStats(catData);
-            setArtworkByDate(dateRes.data);
-        } catch (e) {
-            console.error('차트 데이터 로딩 실패', e);
         }
     }, [accessToken]);
 
     useEffect(() => {
-        if (isAuthenticated && role === 'ADMIN') {
-            fetchStats();
-            fetchPendingInquiries();
-            fetchChartData();
-        }
-    }, [isAuthenticated, role, fetchStats, fetchPendingInquiries, fetchChartData]);
+        void fetchDashboardData();
+    }, [fetchDashboardData]);
 
-    if (!isAuthenticated || role !== 'ADMIN') {
-        return <Navigate to="/" replace />;
-    }
+    const statCards = [
+        { title: '총 사용자', value: (stats?.totalUsers || 0).toLocaleString(), icon: '👤', color: '#6366F1' },
+        { title: '활성 작품', value: (stats?.activeArtworks || 0).toLocaleString(), icon: '🎨', color: '#8B5CF6' },
+        { title: '대기 문의', value: (stats?.pendingInquiries || 0).toLocaleString(), icon: '📬', color: '#EC4899' },
+        { title: '오늘 매출', value: `₩${(stats?.todaySales || 0).toLocaleString()}`, icon: '💰', color: '#10B981' },
+    ];
 
     return (
         <div style={s.container}>
             <header style={s.header}>
-                <h1 style={s.title}>📊 서비스 대시보드</h1>
-                <p style={s.meta}>환영합니다, <strong>{nickname}</strong> 관리자님! 오늘의 현황입니다. 🐣</p>
+                <div>
+                    <h1 style={s.title}>오버뷰</h1>
+                    <p style={s.subtitle}>다시 오신 것을 환영합니다. 오늘의 현황입니다. ⚡</p>
+                </div>
+                <button onClick={() => void fetchDashboardData()} style={s.refreshBtn}>
+                    <span style={{ marginRight: 6 }}>🔄</span> {loading ? '동기화 중...' : '데이터 새로고침'}
+                </button>
             </header>
 
-            {loading ? (
-                <div style={s.emptyState}>데이터를 불러오는 중입니다... 🔄</div>
-            ) : stats ? (
-                <div style={s.grid}>
-                    {/* 카드 1: 유저 현황 */}
-                    <div style={s.card}>
-                        <h3 style={s.cardLabel}>👥 전체 유저</h3>
-                        <div style={s.cardValue}>{stats.totalUsers.toLocaleString()} 명</div>
-                        <p style={s.cardSub}>오늘 신규: <span style={{color: '#10B981'}}>+{stats.todayNewUsers}</span></p>
+            {/* 🚀 Giant Stat Cards */}
+            <div style={s.grid}>
+                {statCards.map((card, idx) => (
+                    <div key={idx} style={s.card}>
+                        <div style={s.cardTop}>
+                            <span style={s.cardIcon}>{card.icon}</span>
+                            <span style={s.cardLabel}>{card.title}</span>
+                        </div>
+                        <div style={s.cardValue}>{card.value}</div>
+                        <div style={{...s.cardTrend, color: card.color}}>
+                            <span style={{ opacity: 0.8 }}>PREV:</span>
+                            <span style={s.trendLabel}>N/A</span>
+                        </div>
                     </div>
+                ))}
+            </div>
 
-                    {/* 카드 2: 매출 현황 */}
-                    <div style={{...s.card, borderLeft: '6px solid #8B5CF6'}}>
-                        <h3 style={s.cardLabel}>💰 누적 매출</h3>
-                        <div style={{...s.cardValue, color: '#7C3AED'}}>₩ {stats.totalSales.toLocaleString()}</div>
-                        <p style={s.cardSub}>오늘 매출: <span style={{fontWeight: 700}}>₩ {stats.todaySales.toLocaleString()}</span></p>
-                    </div>
-
-                    {/* 카드 3: 활성 상태 */}
-                    <div style={s.card}>
-                        <h3 style={s.cardLabel}>✅ 활성 유저</h3>
-                        <div style={{...s.cardValue, color: '#10B981'}}>{stats.activeUsers.toLocaleString()} 명</div>
-                        <p style={s.cardSub}>서비스 이용 중인 유저</p>
-                    </div>
-
-                    {/* 카드 4: 정지 상태 */}
-                    <div style={{...s.card, borderLeft: '6px solid #EF4444'}}>
-                        <h3 style={s.cardLabel}>🚫 정지 유저</h3>
-                        <div style={{...s.cardValue, color: '#EF4444'}}>{stats.suspendedUsers.toLocaleString()} 명</div>
-                        <p style={s.cardSub}>운영 정책 위반 등의 사유</p>
-                    </div>
-                </div>
-            ) : (
-                <div style={s.emptyState}>통계 데이터를 표시할 수 없습니다. 😥</div>
-            )}
-
-            {/* 📊 차트 섹션 */}
-            <div style={s.chartGrid}>
+            {/* 📊 Slick Monochromatic Charts */}
+            <div style={s.chartSection}>
                 <div style={s.chartCard}>
-                    <h3 style={s.chartTitle}>📂 문의 카테고리별 접수 현황</h3>
-                    {categoryStats.length === 0 ? (
-                        <div style={s.chartEmpty}>데이터 없음</div>
-                    ) : (
-                        <ResponsiveContainer width="100%" height={220}>
-                            <BarChart data={categoryStats} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                                <XAxis dataKey="name" tick={{ fontSize: 13, fill: '#6B7280' }} />
-                                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#9CA3AF' }} />
-                                <Tooltip formatter={(v) => [`${v}건`, '접수']} />
-                                <Bar dataKey="count" fill="#7C3AED" radius={[6, 6, 0, 0]} />
-                            </BarChart>
+                    <div style={s.chartHeader}>
+                        <h3 style={s.chartTitle}>사용자 증가 추이</h3>
+                        <p style={s.chartSubtitle}>주간 방문자 및 신규 가입자 현황</p>
+                    </div>
+                    <div style={s.chartBody}>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <AreaChart data={weeklyData}>
+                                <defs>
+                                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#6366F1" stopOpacity={0.1}/>
+                                        <stop offset="95%" stopColor="#6366F1" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                                <XAxis 
+                                    dataKey="date" 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{fill: '#94A3B8', fontSize: 12}}
+                                    dy={10}
+                                />
+                                <YAxis 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{fill: '#94A3B8', fontSize: 12}}
+                                />
+                                <Tooltip 
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                                />
+                                <Area 
+                                    type="monotone" 
+                                    dataKey="value" 
+                                    stroke="#6366F1" 
+                                    strokeWidth={3}
+                                    fillOpacity={1} 
+                                    fill="url(#colorValue)" 
+                                />
+                            </AreaChart>
                         </ResponsiveContainer>
-                    )}
+                    </div>
                 </div>
 
                 <div style={s.chartCard}>
-                    <h3 style={s.chartTitle}>🎨 날짜별 이미지 생성 수 (최근 14일)</h3>
-                    {artworkByDate.length === 0 ? (
-                        <div style={s.chartEmpty}>데이터 없음</div>
-                    ) : (
-                        <ResponsiveContainer width="100%" height={220}>
-                            <LineChart data={artworkByDate} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                                <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6B7280' }} tickFormatter={(d) => d.slice(5)} />
-                                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#9CA3AF' }} />
-                                <Tooltip formatter={(v) => [`${v}개`, '생성']} labelFormatter={(l) => `날짜: ${l}`} />
-                                <Line type="monotone" dataKey="count" stroke="#7C3AED" strokeWidth={2.5} dot={{ r: 4, fill: '#7C3AED' }} activeDot={{ r: 6 }} />
+                    <div style={s.chartHeader}>
+                        <h3 style={s.chartTitle}>수익 스트림</h3>
+                        <p style={s.chartSubtitle}>일별 토큰 구매 트렌드</p>
+                    </div>
+                    <div style={s.chartBody}>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <LineChart data={weeklyData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                                <XAxis 
+                                    dataKey="date" 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{fill: '#94A3B8', fontSize: 12}}
+                                    dy={10}
+                                />
+                                <YAxis axisLine={false} tickLine={false} tick={{fill: '#94A3B8', fontSize: 12}} />
+                                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                                <Line 
+                                    type="stepAfter" 
+                                    dataKey="value" 
+                                    stroke="#8B5CF6" 
+                                    strokeWidth={3} 
+                                    dot={{ r: 4, fill: '#8B5CF6', strokeWidth: 2, stroke: '#FFF' }}
+                                    activeDot={{ r: 6, strokeWidth: 0 }}
+                                />
                             </LineChart>
                         </ResponsiveContainer>
-                    )}
+                    </div>
                 </div>
             </div>
 
-            {/* 📬 응답 대기 문의 */}
-            <div style={s.inquirySection}>
-                <div style={s.inquirySectionHeader}>
-                    <h3 style={s.sectionSubTitle}>📬 응답 대기 중
-                        {pendingInquiries.length > 0 && (
-                            <span style={s.pendingCount}>{pendingInquiries.length}</span>
-                        )}
-                    </h3>
-                    <button style={s.goInquiryBtn} onClick={() => navigate('/admin/inquiries')}>
-                        문의게시판 바로가기 →
-                    </button>
-                </div>
-
-                {pendingInquiries.length === 0 ? (
-                    <div style={s.inquiryEmpty}>미응답 문의가 없습니다.</div>
-                ) : (
-                    <div style={s.inquiryList}>
-                        {pendingInquiries.map(item => (
-                            <div key={item.id} style={s.inquiryCard}>
-                                <div style={s.inquiryCardHeader} onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}>
-                                    <div style={s.inquiryMeta}>
-                                        <span style={s.inquiryCategoryTag}>{CATEGORY_LABELS[item.category] ?? item.category}</span>
-                                        <span style={s.inquiryTitle}>{item.title}</span>
-                                    </div>
-                                    <div style={s.inquiryRight}>
-                                        <span style={s.inquiryEmail}>{item.email}</span>
-                                        <span style={s.inquiryDate}>{new Date(item.createdAt).toLocaleDateString('ko-KR')}</span>
-                                        <span style={{ fontSize: '11px', color: '#9CA3AF' }}>{expandedId === item.id ? '▲' : '▼'}</span>
-                                    </div>
-                                </div>
-
-                                {expandedId === item.id && (
-                                    <div style={s.inquiryExpanded}>
-                                        <p style={s.inquiryContent}>{item.content}</p>
-                                        <div style={s.replyForm}>
-                                            <textarea
-                                                style={s.textarea}
-                                                placeholder="이메일로 발송할 답변 내용을 입력하세요..."
-                                                value={replyMap[item.id] ?? ''}
-                                                onChange={e => setReplyMap(prev => ({ ...prev, [item.id]: e.target.value }))}
-                                                rows={3}
-                                            />
-                                            <button
-                                                style={{ ...s.submitBtn, opacity: submitting === item.id ? 0.6 : 1 }}
-                                                onClick={() => handleReply(item.id)}
-                                                disabled={submitting === item.id || !replyMap[item.id]?.trim()}
-                                            >
-                                                {submitting === item.id ? '발송 중...' : '이메일로 답변 발송'}
-                                            </button>
+            <div style={{ ...s.chartSection, marginTop: '24px', gridTemplateColumns: '1fr' }}>
+                {/* 🏆 Trending Artworks */}
+                <div style={s.chartCard}>
+                    <div style={s.chartHeader}>
+                        <h3 style={s.chartTitle}>실시간 인기 작품 TOP 5</h3>
+                        <p style={s.chartSubtitle}>가장 많은 좋아요를 받은 작품들입니다.</p>
+                    </div>
+                    <div style={{ padding: '0 10px' }}>
+                        {stats.topArtworks?.length > 0 ? (
+                            stats.topArtworks.map((art, i) => (
+                                <div key={art.artworkId} style={s.productRow}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                        <div style={{ 
+                                            ...s.rankBadge, 
+                                            backgroundColor: i < 3 ? '#6366F1' : '#F1F5F9', 
+                                            color: i < 3 ? '#FFF' : '#94A3B8' 
+                                        }}>{i + 1}</div>
+                                        <div style={s.artThumbBox}>
+                                            <img src={art.imageUrl} alt={art.title} style={s.artThumb} />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <span style={{ fontSize: 14, fontWeight: 800, color: '#1E293B' }}>{art.title}</span>
+                                            <span style={{ fontSize: 12, color: '#94A3B8', fontWeight: 600 }}>by {art.author}</span>
                                         </div>
                                     </div>
-                                )}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <span style={{ fontSize: 14 }}>❤️</span>
+                                        <span style={{ fontSize: 15, fontWeight: 900, color: '#6366F1' }}>{art.likeCount}</span>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div style={s.emptyStateMini}>
+                                <span style={{ fontSize: 20, opacity: 0.15, marginBottom: 4 }}>🎨</span>
+                                <p style={{ fontSize: 11, fontWeight: 700, color: '#CBD5E1', margin: 0 }}>데이터 없음</p>
                             </div>
-                        ))}
+                        )}
                     </div>
-                )}
-            </div>
-
-            {/* 💡 바로가기 섹션 */}
-            <div style={s.quickMenu}>
-                <h3 style={s.sectionSubTitle}>🚀 빠른 관리 메뉴</h3>
-                <div style={{display: 'flex', gap: '15px'}}>
-                    <button style={s.menuBtn} onClick={() => window.location.href='/admin/users'}>통합 관리하기</button>
-                    <button style={s.menuBtn} onClick={() => window.location.href='/admin/payments'}>결제 내역보기</button>
                 </div>
             </div>
         </div>
     );
 };
 
-// 🌌 스타일 디자인
 const s: Record<string, React.CSSProperties> = {
-    container: { padding: '40px', maxWidth: '1100px', margin: '0 auto' },
-    header: { marginBottom: '40px' },
-    title: { fontSize: '32px', fontWeight: 800, color: '#4C1D95' },
-    meta: { color: '#6D28D9', fontSize: '16px', opacity: 0.9 },
-    grid: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-        gap: '25px',
-        marginBottom: '50px'
+    container: { animation: 'fadeIn 0.5s ease-out' },
+    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '40px' },
+    title: { fontSize: '32px', fontWeight: 900, color: '#1E293B', margin: 0, letterSpacing: '-1px' },
+    subtitle: { fontSize: '15px', color: '#64748B', fontWeight: 500, marginTop: '4px' },
+    refreshBtn: { 
+        padding: '10px 20px', backgroundColor: '#FFF', border: '1px solid #E2E8F0', 
+        borderRadius: '12px', color: '#1E293B', fontWeight: 700, fontSize: '13px', 
+        cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', transition: '0.2s' 
     },
-    card: {
-        backgroundColor: 'rgba(255, 255, 255, 0.8)',
-        backdropFilter: 'blur(10px)',
-        padding: '30px',
-        borderRadius: '25px',
-        boxShadow: '0 10px 20px rgba(139, 92, 246, 0.1)',
-        borderLeft: '6px solid #10B981', // 기본 초록색 포인트
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center'
+
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px', marginBottom: '40px' },
+    card: { 
+        backgroundColor: '#FFF', padding: '30px', borderRadius: '24px', 
+        border: '1px solid #F1F5F9', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.04)',
+        display: 'flex', flexDirection: 'column', transition: 'transform 0.3s ease'
     },
-    cardLabel: { fontSize: '15px', fontWeight: 700, color: '#6B7280', marginBottom: '10px' },
-    cardValue: { fontSize: '28px', fontWeight: 900, color: '#1F2937', marginBottom: '8px' },
-    cardSub: { fontSize: '14px', color: '#9CA3AF' },
-    inquirySection: { marginBottom: '40px' },
-    inquirySectionHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' },
-    pendingCount: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#F59E0B', color: '#fff', fontSize: '11px', fontWeight: 800, borderRadius: '50%', width: '20px', height: '20px', marginLeft: '8px' },
-    goInquiryBtn: { padding: '8px 18px', background: '#EDE9FE', color: '#7C3AED', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '13px', cursor: 'pointer' },
-    inquiryEmpty: { textAlign: 'center', padding: '32px', background: '#F9FAFB', borderRadius: '14px', color: '#9CA3AF', fontSize: '14px' },
-    inquiryList: { display: 'flex', flexDirection: 'column', gap: '10px' },
-    inquiryCard: { background: '#fff', borderRadius: '12px', border: '1.5px solid #E5E7EB', borderLeft: '4px solid #F59E0B', boxShadow: '0 2px 6px rgba(0,0,0,0.04)', overflow: 'hidden' },
-    inquiryCardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', cursor: 'pointer' },
-    inquiryMeta: { display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 },
-    inquiryCategoryTag: { background: '#FEF3C7', color: '#D97706', fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', whiteSpace: 'nowrap' as const },
-    inquiryTitle: { fontSize: '14px', fontWeight: 600, color: '#1F2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
-    inquiryRight: { display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 },
-    inquiryEmail: { fontSize: '12px', color: '#9CA3AF' },
-    inquiryDate: { fontSize: '12px', color: '#9CA3AF' },
-    inquiryExpanded: { padding: '0 18px 16px', borderTop: '1px solid #F3F4F6' },
-    inquiryContent: { fontSize: '13px', color: '#374151', lineHeight: 1.7, margin: '12px 0', padding: '12px', background: '#F9FAFB', borderRadius: '8px' },
-    replyForm: { display: 'flex', flexDirection: 'column', gap: '8px' },
-    textarea: { width: '100%', padding: '10px 12px', fontSize: '13px', border: '1.5px solid #E5E7EB', borderRadius: '10px', resize: 'vertical' as const, outline: 'none', boxSizing: 'border-box' as const, fontFamily: 'inherit' },
-    submitBtn: { alignSelf: 'flex-end', padding: '9px 22px', background: 'linear-gradient(135deg,#7C3AED,#6366F1)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '13px', cursor: 'pointer' },
-    chartGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '24px', marginBottom: '40px' },
-    chartCard: { background: '#fff', borderRadius: '20px', padding: '24px 28px', boxShadow: '0 4px 16px rgba(139,92,246,0.08)', border: '1px solid #EDE9FE' },
-    chartTitle: { fontSize: '15px', fontWeight: 700, color: '#5B21B6', marginBottom: '16px' },
-    chartEmpty: { textAlign: 'center' as const, padding: '60px 0', color: '#D1D5DB', fontSize: '14px' },
-    quickMenu: { marginTop: '48px' },
-    sectionSubTitle: { fontSize: '20px', fontWeight: 800, color: '#5B21B6', marginBottom: '20px' },
-    menuBtn: {
-        padding: '15px 25px',
-        borderRadius: '15px',
-        border: 'none',
-        background: '#fff',
-        color: '#7C3AED',
-        fontWeight: 700,
-        cursor: 'pointer',
-        boxShadow: '0 4px 10px rgba(0,0,0,0.05)',
-        transition: 'all 0.2s'
+    cardTop: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' },
+    cardIcon: { fontSize: '20px' },
+    cardLabel: { fontSize: '14px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' },
+    cardValue: { fontSize: '36px', fontWeight: 900, color: '#0F172A', marginBottom: '10px', letterSpacing: '-1px' },
+    cardTrend: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 800 },
+    trendLabel: { color: '#94A3B8', fontWeight: 500 },
+
+    chartSection: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' },
+    chartCard: { 
+        backgroundColor: '#FFF', padding: '30px', borderRadius: '30px', 
+        border: '1px solid #F1F5F9', boxShadow: '0 10px 40px -15px rgba(0,0,0,0.05)' 
     },
-    emptyState: { textAlign: 'center', padding: '100px', color: '#94A3B8', fontSize: '18px' }
+    chartHeader: { marginBottom: '30px' },
+    chartTitle: { fontSize: '18px', fontWeight: 800, color: '#1E293B', margin: 0 },
+    chartSubtitle: { fontSize: '13px', color: '#94A3B8', marginTop: '4px' },
+    chartBody: { width: '100%', height: '300px' },
+
+    productRow: { 
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+        padding: '16px 0', borderBottom: '1px solid #F1F5F9' 
+    },
+    rankBadge: { 
+        width: 24, height: 24, borderRadius: 6, display: 'flex', 
+        alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900 
+    },
+    artThumbBox: { width: '48px', height: '48px', borderRadius: '10px', overflow: 'hidden', backgroundColor: '#F1F5F9' },
+    artThumb: { width: '100%', height: '100%', objectFit: 'cover' },
+
+    emptyStateMini: { 
+        display: 'flex', flexDirection: 'column', alignItems: 'center', 
+        justifyContent: 'center', padding: '30px 0',
+        backgroundColor: 'transparent'
+    }
 };
 
 export default AdminDashboard;

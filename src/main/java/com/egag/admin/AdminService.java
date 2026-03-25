@@ -1,19 +1,25 @@
 package com.egag.admin;
 
-import com.egag.admin.dto.AdminDashboardStatsResponse;
-import com.egag.admin.dto.PaymentStat;
-import com.egag.admin.dto.ProductStat;
+import com.egag.admin.dto.*;
+import com.egag.common.domain.Artwork;
+import com.egag.common.domain.ArtworkRepository;
 import com.egag.common.domain.User;
 import com.egag.common.domain.UserRepository;
+import com.egag.inquiry.InquiryRepository;
 import com.egag.payment.PaymentRepository;
 import com.egag.payment.TokenLogRepository;
+import com.egag.notification.NotificationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +29,11 @@ public class AdminService {
     private final UserRepository userRepository;
     private final AdminActionLogRepository logRepository;
     private final PaymentRepository paymentRepository;
+    private final NotificationService notificationService;
+    private final ArtworkRepository artworkRepository;
+    private final InquiryRepository inquiryRepository;
+    private final ReportRepository reportRepository;
+    private final MainImageRepository mainImageRepository;
 
     @Transactional(readOnly = true)
     public AdminDashboardStatsResponse getRealDashboardStats() {
@@ -30,19 +41,27 @@ public class AdminService {
         LocalDateTime startOfToday = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
 
         long todayNewUsers = userRepository.countByCreatedAtAfter(startOfToday);
-        // UserRepository의 countByIsSuspended 파라미터가 Boolean 객체인 경우를 위해 Boolean.TRUE 사용
         long suspendedUsers = userRepository.countByIsSuspended(Boolean.TRUE);
 
         Long totalSalesRaw = paymentRepository.sumTotalAmount();
         Long todaySalesRaw = paymentRepository.sumAmountByCreatedAtAfter(startOfToday);
 
-        // 빌더가 long(원시타입)을 요구할 경우를 대비해 0L 기본값 처리
         long totalSales = (totalSalesRaw != null) ? totalSalesRaw : 0L;
         long todaySales = (todaySalesRaw != null) ? todaySalesRaw : 0L;
 
-        // 리스트 데이터 추가
-        List<ProductStat> topProducts = paymentRepository.findTopProducts();
-        List<PaymentStat> paymentMethodRatio = paymentRepository.findPaymentMethodRatio();
+        List<Artwork> trendingArtworks = artworkRepository.findByIsPublicTrueOrderByLikeCountDesc(PageRequest.of(0, 5));
+        List<ArtworkStat> topArtworks = trendingArtworks.stream()
+                .map(a -> ArtworkStat.builder()
+                        .artworkId(a.getId())
+                        .title(a.getTitle())
+                        .author(a.getUser() != null ? a.getUser().getNickname() : "Unknown")
+                        .likeCount(a.getLikeCount())
+                        .imageUrl(a.getImageUrl())
+                        .build())
+                .collect(Collectors.toList());
+
+        long activeArtworks = artworkRepository.count();
+        long pendingInquiries = inquiryRepository.countByStatus("pending");
 
         return AdminDashboardStatsResponse.builder()
                 .totalUsers(totalUsers)
@@ -51,8 +70,9 @@ public class AdminService {
                 .todaySales(todaySales)
                 .suspendedUsers(suspendedUsers)
                 .activeUsers(totalUsers - suspendedUsers)
-                .topProducts(topProducts)
-                .paymentMethodRatio(paymentMethodRatio)
+                .activeArtworks(activeArtworks)
+                .pendingInquiries(pendingInquiries)
+                .topArtworks(topArtworks)
                 .build();
     }
 
@@ -60,8 +80,6 @@ public class AdminService {
     public void toggleUserStatus(String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
-
-        // Boolean 객체와 boolean 기본형 비교 처리
         boolean currentStatus = (user.getIsSuspended() != null && user.getIsSuspended());
         user.setIsSuspended(!currentStatus);
     }
@@ -98,5 +116,92 @@ public class AdminService {
                 .createdAt(LocalDateTime.now())
                 .build();
         tokenLogRepository.save(tokenLog);
+
+        User admin = userRepository.findById(adminId).orElse(null);
+        if (admin != null) {
+            notificationService.createTokenNotification(user, admin, amount, reason);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AdminPaymentResponse> getAdminPayments(String keyword, Pageable pageable) {
+        Page<com.egag.payment.Payment> payments;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            payments = paymentRepository.searchByKeyword(keyword.trim(), pageable);
+        } else {
+            payments = paymentRepository.findAllByOrderByCreatedAtDesc(pageable);
+        }
+        return payments.map(AdminPaymentResponse::of);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AdminReportResponse> getAdminReports(String status, String keyword, Pageable pageable) {
+        Page<Report> reports;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            reports = reportRepository.findByReasonContainingOrArtworkTitleContaining(keyword.trim(), pageable);
+        } else if ("pending".equals(status)) {
+            reports = reportRepository.findByStatusOrderByCreatedAtDesc("pending", pageable);
+        } else {
+            reports = reportRepository.findAllByOrderByCreatedAtDesc(pageable);
+        }
+        return reports.map(AdminReportResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public List<MainBannerResponse> getMainImages() {
+        List<MainBannerResponse> responses = new java.util.ArrayList<>();
+        for (int i = 0; i < 6; i++) {
+            final int slot = i;
+            MainBannerResponse res = mainImageRepository.findBySlotNumber(slot)
+                    .map(MainBannerResponse::from)
+                    .orElse(MainBannerResponse.builder().slotNumber(slot).build());
+            responses.add(res);
+        }
+        return responses;
+    }
+
+    @Transactional
+    public void assignMainImage(String artworkId, Integer slotNumber) {
+        Artwork artwork = artworkRepository.findById(artworkId)
+                .orElseThrow(() -> new RuntimeException("작품을 찾을 수 없습니다."));
+        
+        MainImage mainImage = mainImageRepository.findBySlotNumber(slotNumber)
+                .orElse(MainImage.builder().slotNumber(slotNumber).build());
+        
+        String imageUrl = artwork.getImageUrl();
+        if (imageUrl == null || imageUrl.isEmpty()) {
+            imageUrl = artwork.getUserImageData();
+        }
+        
+        if (imageUrl == null || imageUrl.isEmpty()) {
+            throw new RuntimeException("작품에 유효한 이미지가 없습니다. (ID: " + artworkId + ")");
+        }
+
+        mainImage.setArtwork(artwork);
+        mainImage.setImageUrl(imageUrl);
+        mainImageRepository.save(mainImage);
+    }
+
+    @Transactional
+    public void toggleArtworkVisibility(String artworkId) {
+        Artwork artwork = artworkRepository.findById(artworkId)
+                .orElseThrow(() -> new RuntimeException("작품을 찾을 수 없습니다."));
+        artwork.setIsPublic(!artwork.getIsPublic());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AdminArtworkResponse> getAdminArtworks(Pageable pageable) {
+        return artworkRepository.findAllWithUser(pageable).map(a -> {
+            String imageUrl = a.getImageUrl();
+            if (imageUrl == null || imageUrl.isEmpty()) {
+                imageUrl = a.getUserImageData();
+            }
+            return AdminArtworkResponse.builder()
+                    .id(a.getId())
+                    .title(a.getTitle())
+                    .imageUrl(imageUrl)
+                    .nickname(a.getUser() != null ? a.getUser().getNickname() : "Unknown")
+                    .build();
+        });
     }
 }
