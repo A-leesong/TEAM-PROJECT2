@@ -21,6 +21,10 @@ public interface InquiryRepository extends JpaRepository<Inquiry, String> {
     // 검색 기능 (제목 또는 내용 기반 - 페이징 추가)
     Page<Inquiry> findByTitleContainingOrContentContainingOrderByCreatedAtDesc(String title, String content, Pageable pageable);
 
+    // 상태 + 검색 조합
+    Page<Inquiry> findByStatusAndTitleContainingOrStatusAndContentContainingOrderByCreatedAtDesc(
+            String status1, String title, String status2, String content, Pageable pageable);
+
     long countByStatus(String status);
 
     // 카테고리별 집계

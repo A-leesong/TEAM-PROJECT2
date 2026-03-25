@@ -42,6 +42,7 @@ export interface AdminArtworkResponse {
     nickname: string;
     createdAt: string;
     isVisible: boolean;
+    likeCount: number;
 }
 
 /**
@@ -131,13 +132,18 @@ export const assignMainImage = async (artworkId: string, slotNumber: number) => 
     return res.data;
 };
 
+export const clearMainImageSlot = async (slotNumber: number) => {
+    const res = await client.delete(`/admin/main-images/${slotNumber}`);
+    return res.data;
+};
+
 /**
  * 💬 전체 문의 내역 조회 (페이징 & 검색 추가)
  */
 export const getAdminInquiries = async (page = 0, size = 10, status = 'all', keyword = '') => {
-    const res = await client.get('/admin/inquiries', {
-        params: { page, size, status, keyword }
-    });
+    const params: Record<string, string | number> = { page, size, status };
+    if (keyword.trim()) params.keyword = keyword.trim();
+    const res = await client.get('/admin/inquiries', { params });
     return res.data;
 };
 
@@ -174,6 +180,22 @@ export const getAdminPayments = async (page = 0, size = 10, keyword = '') => {
     const res = await client.get('/admin/payments', {
         params: { page, size, keyword }
     });
+    return res.data;
+};
+
+/**
+ * 🗑️ 작품 삭제 (어드민)
+ */
+export const deleteAdminArtwork = async (artworkId: string) => {
+    const res = await client.delete(`/admin/artworks/${artworkId}`);
+    return res.data;
+};
+
+/**
+ * 📋 내 문의 내역 조회
+ */
+export const getMyInquiries = async (): Promise<any[]> => {
+    const res = await client.get('/inquiries/my');
     return res.data;
 };
 

@@ -1,7 +1,8 @@
 import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, ChevronUp, Phone, MessageSquare } from 'lucide-react';
-import axios, { AxiosError } from 'axios';
+import { AxiosError } from 'axios';
+import client from '../api/client';
 import { useAuthStore } from '../stores/useAuthStore';
 
 const faqData = [
@@ -48,6 +49,7 @@ export const Inquiry = () => {
     const [showFormModal, setShowFormModal] = useState(false);
     const [showPhoneModal, setShowPhoneModal] = useState(false);
     const [showTop, setShowTop] = useState(false);
+    const [submitSuccess, setSubmitSuccess] = useState(false);
 
     useEffect(() => {
         const onScroll = () => setShowTop(window.scrollY > 300);
@@ -73,11 +75,14 @@ export const Inquiry = () => {
         data.append('inquiry', new Blob([JSON.stringify(formData)], { type: 'application/json' }));
         if (file) data.append('file', file);
         try {
-            await axios.post('/api/inquiries', data, { headers: { 'Content-Type': 'multipart/form-data' } });
-            alert("문의가 접수되었습니다.\n빠른 시일 내에 확인 후 처리해 드리겠습니다.");
+            await client.post('/inquiries', data, { headers: { 'Content-Type': 'multipart/form-data' } });
+            setSubmitSuccess(true);
             setFormData(prev => ({ ...prev, title: '', content: '' }));
             setFile(null);
-            setShowForm(false);
+            setTimeout(() => {
+                setSubmitSuccess(false);
+                setShowFormModal(false);
+            }, 2000);
         } catch (error) {
             const err = error as AxiosError<string>;
             alert(err.response?.data || "접수 중 오류가 발생했습니다.");
@@ -172,7 +177,7 @@ export const Inquiry = () => {
                     <p style={s.contactHours}>운영시간 · 평일 10:00 ~ 18:00 &nbsp;|&nbsp; 점심 12:00 ~ 13:00 &nbsp;|&nbsp; 주말 · 공휴일 휴무</p>
 
                     <div style={s.contactCards} className="inq-contact-row">
-                        <button className="inq-contact-card" onClick={() => setShowFormModal(true)} style={s.contactCard}>
+                        <button className="inq-contact-card" onClick={() => { if (!isAuthenticated) { alert('문의 작성은 로그인이 필요합니다.'); navigate('/login'); return; } setShowFormModal(true); }} style={s.contactCard}>
                             <MessageSquare size={28} color="#c47a8a" strokeWidth={1.8} />
                             <div>
                                 <div style={s.contactCardTitle}>1:1 문의 작성</div>
@@ -196,38 +201,48 @@ export const Inquiry = () => {
             {showFormModal && (
                 <div style={s.modalOverlay} onClick={() => setShowFormModal(false)}>
                     <div style={{ ...s.modalBox, minWidth: 480, maxWidth: 560, padding: '36px 40px 32px' }} className="inq-modal" onClick={(e) => e.stopPropagation()}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 24 }}>
-                            <h3 style={s.modalTitle}>1:1 문의 접수</h3>
-                            <button onClick={() => setShowFormModal(false)} style={s.formClose}>✕</button>
-                        </div>
-                        <form onSubmit={handleSubmit} style={{ width: '100%' }}>
-                            <div style={s.formGroup}>
-                                <label style={s.label}>문의 유형</label>
-                                <select style={s.select} value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}>
-                                    <option>토큰 / 결제</option>
-                                    <option>AI 생성 오류</option>
-                                    <option>계정 / 로그인</option>
-                                    <option>기능 제안</option>
-                                    <option>신고</option>
-                                    <option>기타</option>
-                                </select>
+                        {submitSuccess ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: '20px 0' }}>
+                                <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>✓</div>
+                                <h3 style={{ ...s.modalTitle, textAlign: 'center', marginBottom: 0 }}>문의가 접수되었습니다</h3>
+                                <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center', margin: 0 }}>빠른 시일 내에 확인 후 처리해 드리겠습니다.</p>
                             </div>
-                            <div style={s.formGroup}>
-                                <label style={s.label}>제목</label>
-                                <input type="text" style={s.input} placeholder="제목을 입력해주세요." value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required />
-                            </div>
-                            <div style={s.formGroup}>
-                                <label style={s.label}>상세 내용</label>
-                                <textarea style={s.textarea} placeholder="내용을 상세히 입력해주세요." value={formData.content} onChange={(e) => setFormData({ ...formData, content: e.target.value })} required />
-                            </div>
-                            <div style={s.fileBox}>
-                                <input type="file" onChange={handleFileChange} accept="image/*" />
-                                <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 6 }}>최대 5MB · JPG / PNG / GIF</p>
-                            </div>
-                            <button type="submit" disabled={isLoading} className="inq-submit" style={s.submitBtn}>
-                                {isLoading ? "전송 중..." : "문의 접수하기"}
-                            </button>
-                        </form>
+                        ) : (
+                            <>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 24 }}>
+                                    <h3 style={s.modalTitle}>1:1 문의 접수</h3>
+                                    <button onClick={() => setShowFormModal(false)} style={s.formClose}>✕</button>
+                                </div>
+                                <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+                                    <div style={s.formGroup}>
+                                        <label style={s.label}>문의 유형</label>
+                                        <select style={s.select} value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}>
+                                            <option>토큰 / 결제</option>
+                                            <option>AI 생성 오류</option>
+                                            <option>계정 / 로그인</option>
+                                            <option>기능 제안</option>
+                                            <option>신고</option>
+                                            <option>기타</option>
+                                        </select>
+                                    </div>
+                                    <div style={s.formGroup}>
+                                        <label style={s.label}>제목</label>
+                                        <input type="text" style={s.input} placeholder="제목을 입력해주세요." value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required />
+                                    </div>
+                                    <div style={s.formGroup}>
+                                        <label style={s.label}>상세 내용</label>
+                                        <textarea style={s.textarea} placeholder="내용을 상세히 입력해주세요." value={formData.content} onChange={(e) => setFormData({ ...formData, content: e.target.value })} required />
+                                    </div>
+                                    <div style={s.fileBox}>
+                                        <input type="file" onChange={handleFileChange} accept="image/*" />
+                                        <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 6 }}>최대 5MB · JPG / PNG / GIF</p>
+                                    </div>
+                                    <button type="submit" disabled={isLoading} className="inq-submit" style={s.submitBtn}>
+                                        {isLoading ? "전송 중..." : "문의 접수하기"}
+                                    </button>
+                                </form>
+                            </>
+                        )}
                     </div>
                 </div>
             )}
@@ -249,7 +264,7 @@ export const Inquiry = () => {
                         </div>
                         <p style={s.modalTip}>
                             대기 없이 빠른 답변을 원하신다면{' '}
-                            <span style={{ color: '#c47a8a', fontWeight: 700, cursor: 'pointer' }} onClick={() => { setShowPhoneModal(false); setShowFormModal(true); }}>1:1 문의 작성</span>을 이용해 보세요.
+                            <span style={{ color: '#c47a8a', fontWeight: 700, cursor: 'pointer' }} onClick={() => { setShowPhoneModal(false); if (!isAuthenticated) { alert('문의 작성은 로그인이 필요합니다.'); navigate('/login'); return; } setShowFormModal(true); }}>1:1 문의 작성</span>을 이용해 보세요.
                         </p>
                         <button
                             onClick={() => window.location.href = 'tel:0212345678'}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuthStore } from '../../stores/useAuthStore';
+import { createPortal } from 'react-dom';
+import { Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MessageSquare, X } from 'lucide-react';
 import { getAdminInquiries, submitInquiryAnswer } from '../../api/adminApi';
 
 interface Inquiry {
@@ -14,226 +15,271 @@ interface Inquiry {
     createdAt: string;
 }
 
+const PAGE_SIZE = 10;
+
 const AdminInquiryManagement = () => {
-    const { accessToken } = useAuthStore();
     const [inquiries, setInquiries] = useState<Inquiry[]>([]);
     const [loading, setLoading] = useState(true);
-    const [selectedId, setSelectedId] = useState<string | null>(null);
-    const [answerText, setAnswerText] = useState('');
-    
-    // 페이징 및 검색 상태
     const [page, setPage] = useState(0);
-    const [totalPages, setTotalPages] = useState(0);
+    const [total, setTotal] = useState(0);
     const [statusFilter, setStatusFilter] = useState('all');
+    const [searchInput, setSearchInput] = useState('');
     const [searchKeyword, setSearchKeyword] = useState('');
+    const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
+    const [answerText, setAnswerText] = useState('');
+    const [submitting, setSubmitting] = useState(false);
 
     const fetchInquiries = useCallback(async () => {
-        if (!accessToken) return;
+        setLoading(true);
         try {
-            setLoading(true);
-            const data = await getAdminInquiries(page, 10, statusFilter, searchKeyword);
+            const data = await getAdminInquiries(page, PAGE_SIZE, statusFilter, searchKeyword);
             setInquiries(data.content || []);
-            setTotalPages(data.totalPages || 0);
-        } catch (err) {
-            console.error("문의 목록 로드 에러:", err);
+            setTotal(data.totalElements || 0);
+        } catch (e) {
+            console.error(e);
         } finally {
             setLoading(false);
         }
-    }, [accessToken, page, statusFilter, searchKeyword]);
+    }, [page, statusFilter, searchKeyword]);
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            void fetchInquiries();
-        }, 300); // 디바운싱
-        return () => clearTimeout(timer);
-    }, [fetchInquiries]);
+    useEffect(() => { void fetchInquiries(); }, [fetchInquiries]);
+    useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, [page]);
 
-    const handleAnswerSubmit = async (id: string) => {
-        if (!answerText.trim()) return;
+    const handleSearch = () => { setSearchKeyword(searchInput); setPage(0); };
+    const handleFilterChange = (val: string) => { setStatusFilter(val); setPage(0); };
+
+    const totalPages = Math.ceil(total / PAGE_SIZE);
+
+    const openModal = (iq: Inquiry) => { setSelectedInquiry(iq); setAnswerText(''); };
+    const closeModal = () => { setSelectedInquiry(null); setAnswerText(''); };
+
+    const handleSubmit = async () => {
+        if (!selectedInquiry || !answerText.trim() || submitting) return;
+        setSubmitting(true);
         try {
-            await submitInquiryAnswer(id, answerText);
-            alert("답변이 등록되었습니다. ✨");
-            setAnswerText('');
-            setSelectedId(null);
+            await submitInquiryAnswer(selectedInquiry.id, answerText);
+            closeModal();
             void fetchInquiries();
         } catch {
-            alert("답변 등록에 실패했습니다.");
+            alert('답변 등록에 실패했습니다.');
+        } finally {
+            setSubmitting(false);
         }
     };
 
     return (
-        <div style={s.container}>
-            <header style={s.header}>
-                <div style={s.headerLeft}>
-                    <h1 style={s.title}>고객 문의 관리</h1>
-                    <p style={s.subtitle}>사용자의 피드백에 귀를 기울이고 최상의 서포트를 제공하세요. 💬</p>
-                </div>
-                
-                <div style={s.controls}>
-                    <div style={s.searchBox}>
-                        <span style={s.searchIcon}>🔍</span>
-                        <input 
-                            style={s.searchInput}
-                            placeholder="제목 또는 내용 검색..."
-                            value={searchKeyword}
-                            onChange={(e) => {
-                                setSearchKeyword(e.target.value);
-                                setPage(0);
-                            }}
-                        />
-                    </div>
-                    <select 
-                        style={s.select}
-                        value={statusFilter}
-                        onChange={(e) => {
-                            setStatusFilter(e.target.value);
-                            setPage(0);
-                        }}
-                    >
-                        <option value="all">전체 상태</option>
-                        <option value="pending">답변 대기</option>
-                        <option value="replied">답변 완료</option>
-                    </select>
-                </div>
-            </header>
+        <div>
+            <style>{`
+                .iq-row { transition: background 0.15s; cursor: pointer; }
+                .iq-row:hover { background: #f8fafc !important; }
+                .iq-page-btn:hover:not(:disabled) { background: #f1f5f9 !important; }
+                .iq-filter-btn:hover { background: #f1f5f9 !important; }
+                @keyframes iqModalIn { from{opacity:0;transform:translateY(12px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+            `}</style>
 
-            <div style={s.list}>
-                {loading ? (
-                    <div style={s.card}>
-                        <p style={{ ...s.cardContent, textAlign: 'center', padding: '40px 0', margin: 0, fontWeight: 700, color: '#94A3B8' }}> ⏳ 문의 내역을 불러오고 있습니다...</p>
-                    </div>
-                ) : inquiries.length > 0 ? (
-                    inquiries.map((iq) => (
-                        <div key={iq.id} style={s.card}>
-                            <div style={s.cardHeader}>
-                                <div style={s.meta}>
-                                    <span style={s.category}>[{iq.category}]</span>
-                                    <span style={s.author}>{iq.authorNickname}</span>
-                                    <span style={s.email}>({iq.email})</span>
-                                    <span style={s.dot}>•</span>
-                                    <span style={s.date}>{new Date(iq.createdAt).toLocaleString()}</span>
-                                </div>
-                                <span style={{...s.statusBadge, backgroundColor: iq.status === 'replied' ? '#D1FAE5' : '#FEF3C7', color: iq.status === 'replied' ? '#065F46' : '#92400E'}}>
-                                    {iq.status === 'replied' ? '답변완료' : '답변대기'}
-                                </span>
-                            </div>
-                            <h3 style={s.cardTitle}>{iq.title}</h3>
-                            <p style={s.cardContent}>{iq.content}</p>
-
-                            {iq.reply ? (
-                                <div style={s.answerBox}>
-                                    <div style={s.answerLabel}>공식 답변</div>
-                                    <p style={s.answerText}>{iq.reply}</p>
-                                </div>
-                            ) : selectedId === iq.id ? (
-                                <div style={s.replyForm}>
-                                    <textarea 
-                                        style={s.textarea} 
-                                        placeholder="전문적이고 친절한 답변을 작성해주세요..."
-                                        value={answerText}
-                                        onChange={(e) => setAnswerText(e.target.value)}
-                                    />
-                                    <div style={s.formActions}>
-                                        <button onClick={() => void handleAnswerSubmit(iq.id)} style={s.submitBtn}>답변 등록</button>
-                                        <button onClick={() => setSelectedId(null)} style={s.cancelBtn}>취소</button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <button onClick={() => setSelectedId(iq.id)} style={s.replyBtn}>답변 작성하기</button>
-                            )}
-                        </div>
-                    ))
-                ) : (
-                    <div style={{ ...s.card, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', padding: '80px', background: 'linear-gradient(to bottom, #FFF, #F8FAFC)' }}>
-                        <div style={{ width: '64px', height: '64px', backgroundColor: '#F1F5F9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <span style={{ fontSize: '32px' }}>💬</span>
-                        </div>
-                        <h3 style={{ ...s.cardTitle, margin: 0, color: '#1E293B' }}>검색 결과가 없습니다.</h3>
-                        <p style={{ ...s.cardContent, margin: 0, color: '#94A3B8', fontSize: '14px' }}>다른 검색어나 필터를 사용해 보세요.</p>
-                    </div>
-                )}
+            {/* 툴바 */}
+            <div style={s.toolbar}>
+                <div style={s.searchWrap}>
+                    <Search size={14} color="#94a3b8" style={{ flexShrink: 0 }} />
+                    <input
+                        style={s.searchInput}
+                        placeholder="제목 또는 작성자 검색"
+                        value={searchInput}
+                        onChange={e => setSearchInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                    />
+                </div>
+                <button style={s.searchBtn} onClick={handleSearch}>검색</button>
+                <div style={s.filterGroup}>
+                    {(['all', 'pending', 'replied'] as const).map(v => (
+                        <button key={v} className="iq-filter-btn"
+                            style={{ ...s.filterBtn, ...(statusFilter === v ? s.filterActive : {}) }}
+                            onClick={() => handleFilterChange(v)}>
+                            {v === 'all' ? '전체' : v === 'pending' ? '답변 대기' : '답변 완료'}
+                        </button>
+                    ))}
+                </div>
+                <span style={s.totalBadge}>총 {total.toLocaleString()}개</span>
             </div>
 
+            {/* 테이블 */}
+            <div style={{ ...s.tableWrap, opacity: loading ? 0.5 : 1, transition: 'opacity 0.2s' }}>
+                <table style={s.table}>
+                    <thead>
+                        <tr style={s.thead}>
+                            {['카테고리', '제목', '작성자', '등록일', '상태'].map(h => (
+                                <th key={h} style={{ ...s.th, textAlign: h === '상태' ? 'center' : 'left' as any }}>{h}</th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {!loading && inquiries.length === 0 ? (
+                            <tr>
+                                <td colSpan={5} style={s.empty}>
+                                    <MessageSquare size={28} color="#cbd5e1" style={{ marginBottom: 8 }} />
+                                    <div>문의 내역이 없습니다</div>
+                                </td>
+                            </tr>
+                        ) : inquiries.map(iq => (
+                            <tr key={iq.id} className="iq-row" style={s.tr} onClick={() => openModal(iq)}>
+                                <td style={s.td}><span style={s.categoryBadge}>{iq.category}</span></td>
+                                <td style={{ ...s.td, maxWidth: 320 }}><span style={s.titleText}>{iq.title}</span></td>
+                                <td style={s.td}>
+                                    <div style={s.authorWrap}>
+                                        <span style={s.authorName}>{iq.authorNickname}</span>
+                                        <span style={s.authorEmail}>{iq.email}</span>
+                                    </div>
+                                </td>
+                                <td style={s.td}>
+                                    <span style={s.date}>
+                                        {new Date(iq.createdAt).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+                                    </span>
+                                </td>
+                                <td style={{ ...s.td, textAlign: 'center' }}>
+                                    <span style={{ ...s.statusBadge, ...(iq.status === 'replied' ? s.statusDone : s.statusPending) }}>
+                                        {iq.status === 'replied' ? '답변완료' : '답변대기'}
+                                    </span>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* 페이지네이션 */}
             {totalPages > 1 && (
                 <div style={s.pagination}>
-                    <button 
-                        disabled={page === 0} 
-                        onClick={() => setPage(p => p - 1)}
-                        style={{...s.pageBtn, opacity: page === 0 ? 0.5 : 1}}
-                    >이전</button>
-                    <div style={s.pageNumbers}>
-                        {Array.from({ length: totalPages }, (_, i) => (
-                            <button 
-                                key={i}
-                                onClick={() => setPage(i)}
-                                style={{...s.pageNumber, backgroundColor: page === i ? '#6366F1' : 'transparent', color: page === i ? '#FFF' : '#64748B'}}
-                            >{i + 1}</button>
+                    <button className="iq-page-btn" style={s.pageBtn} onClick={() => setPage(0)} disabled={page === 0}><ChevronsLeft size={15} /></button>
+                    <button className="iq-page-btn" style={s.pageBtn} onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}><ChevronLeft size={15} /></button>
+                    {Array.from({ length: totalPages }, (_, i) => i)
+                        .slice(Math.max(0, page - 2), Math.min(totalPages, page + 3))
+                        .map(i => (
+                            <button key={i} className="iq-page-btn"
+                                style={{ ...s.pageBtn, ...(i === page ? s.pageActive : {}) }}
+                                onClick={() => setPage(i)}>{i + 1}</button>
                         ))}
-                    </div>
-                    <button 
-                        disabled={page === totalPages - 1} 
-                        onClick={() => setPage(p => p + 1)}
-                        style={{...s.pageBtn, opacity: page === totalPages - 1 ? 0.5 : 1}}
-                    >다음</button>
+                    <button className="iq-page-btn" style={s.pageBtn} onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}><ChevronRight size={15} /></button>
+                    <button className="iq-page-btn" style={s.pageBtn} onClick={() => setPage(totalPages - 1)} disabled={page === totalPages - 1}><ChevronsRight size={15} /></button>
                 </div>
+            )}
+
+            {/* 모달 */}
+            {selectedInquiry && createPortal(
+                <div style={s.overlay} onClick={closeModal}>
+                    <div style={s.modal} onClick={e => e.stopPropagation()}>
+                        {/* 모달 헤더 */}
+                        <div style={s.modalHeader}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <span style={s.categoryBadge}>{selectedInquiry.category}</span>
+                                <span style={{ ...s.statusBadge, ...(selectedInquiry.status === 'replied' ? s.statusDone : s.statusPending) }}>
+                                    {selectedInquiry.status === 'replied' ? '답변완료' : '답변대기'}
+                                </span>
+                            </div>
+                            <button style={s.closeBtn} onClick={closeModal}><X size={16} /></button>
+                        </div>
+
+                        <h3 style={s.modalTitle}>{selectedInquiry.title}</h3>
+                        <div style={s.modalMeta}>
+                            <span style={s.authorName}>{selectedInquiry.authorNickname}</span>
+                            <span style={s.authorEmail}>{selectedInquiry.email}</span>
+                            <span style={{ color: '#cbd5e1' }}>·</span>
+                            <span style={s.date}>{new Date(selectedInquiry.createdAt).toLocaleString('ko-KR')}</span>
+                        </div>
+
+                        <div style={s.divider} />
+
+                        {/* 문의 내용 */}
+                        <div style={s.contentBox}>
+                            <p style={s.contentLabel}>문의 내용</p>
+                            <p style={s.contentText}>{selectedInquiry.content}</p>
+                        </div>
+
+                        {/* 답변 */}
+                        {selectedInquiry.reply ? (
+                            <div style={s.replyBox}>
+                                <p style={s.replyLabel}>공식 답변</p>
+                                <p style={s.replyText}>{selectedInquiry.reply}</p>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                <p style={s.replyLabel}>답변 작성</p>
+                                <textarea
+                                    style={s.textarea}
+                                    placeholder="답변을 작성해주세요..."
+                                    value={answerText}
+                                    onChange={e => setAnswerText(e.target.value)}
+                                />
+                                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                    <button style={s.cancelBtn} onClick={closeModal}>취소</button>
+                                    <button style={{ ...s.submitBtn, opacity: submitting ? 0.6 : 1 }}
+                                        onClick={() => void handleSubmit()} disabled={submitting}>
+                                        답변 등록
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>,
+                document.body
             )}
         </div>
     );
 };
 
 const s: Record<string, React.CSSProperties> = {
-    container: { padding: '20px 0' },
-    header: { marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '20px' },
-    headerLeft: { flex: 1, minWidth: '300px' },
-    title: { fontSize: '28px', fontWeight: 900, color: '#0F172A', margin: 0 },
-    subtitle: { fontSize: '15px', color: '#64748B', fontWeight: 500, marginTop: '4px' },
-    
-    controls: { display: 'flex', gap: '12px', alignItems: 'center' },
-    searchBox: { position: 'relative', display: 'flex', alignItems: 'center' },
-    searchIcon: { position: 'absolute', left: '15px', fontSize: '14px', color: '#94A3B8' },
-    searchInput: { 
-        padding: '12px 15px 12px 40px', borderRadius: '12px', border: '1px solid #E2E8F0', 
-        fontSize: '14px', width: '250px', outline: 'none', transition: 'all 0.2s',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+    toolbar: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' },
+    searchWrap: {
+        display: 'flex', alignItems: 'center', gap: 8,
+        background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10,
+        padding: '8px 14px', flex: 1, maxWidth: 360,
     },
-    select: { 
-        padding: '12px 15px', borderRadius: '12px', border: '1px solid #E2E8F0', 
-        fontSize: '14px', outline: 'none', backgroundColor: '#FFF', cursor: 'pointer',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
-    },
+    searchInput: { border: 'none', outline: 'none', fontSize: 13, color: '#374151', background: 'transparent', width: '100%' },
+    searchBtn: { padding: '8px 18px', background: '#1e3a5f', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer' },
+    filterGroup: { display: 'flex', gap: 6 },
+    filterBtn: { padding: '8px 14px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12, fontWeight: 600, color: '#64748b', cursor: 'pointer', transition: 'all 0.15s' },
+    filterActive: { background: '#1e3a5f', color: '#fff', border: '1px solid #1e3a5f' },
+    totalBadge: { marginLeft: 'auto', fontSize: 12, fontWeight: 600, color: '#94a3b8' },
 
-    list: { display: 'flex', flexDirection: 'column', gap: '20px' },
-    card: { 
-        backgroundColor: '#FFF', borderRadius: '24px', padding: '30px', 
-        border: '1px solid #F1F5F9', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' 
-    },
-    cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' },
-    meta: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
-    category: { fontSize: '12px', fontWeight: 900, color: '#6366F1' },
-    author: { fontSize: '14px', fontWeight: 800, color: '#1E293B' },
-    email: { fontSize: '12px', color: '#94A3B8', fontWeight: 500 },
-    dot: { color: '#CBD5E1' },
-    date: { fontSize: '13px', color: '#94A3B8', fontWeight: 500 },
-    statusBadge: { padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 800 },
-    
-    cardTitle: { fontSize: '18px', fontWeight: 800, color: '#1E293B', margin: '0 0 10px 0' },
-    cardContent: { fontSize: '15px', color: '#64748B', lineHeight: '1.6', margin: '0 0 20px 0' },
+    tableWrap: { background: '#fff', borderRadius: 16, border: '1px solid #f1f5f9', boxShadow: '0 2px 12px rgba(0,0,0,0.05)', overflow: 'hidden' },
+    table: { width: '100%', borderCollapse: 'collapse' },
+    thead: { borderBottom: '1px solid #f1f5f9', background: '#f8fafc' },
+    th: { padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: 0.3 },
+    tr: { borderBottom: '1px solid #f8fafc' },
+    td: { padding: '14px 16px', verticalAlign: 'middle' },
 
-    answerBox: { backgroundColor: '#F8FAFC', padding: '20px', borderRadius: '16px', borderLeft: '4px solid #6366F1' },
-    answerLabel: { fontSize: '10px', fontWeight: 900, color: '#6366F1', marginBottom: '8px', letterSpacing: '1px' },
-    answerText: { fontSize: '14px', color: '#1E293B', margin: 0, lineHeight: '1.5' },
+    categoryBadge: { fontSize: 10, fontWeight: 800, color: '#6366f1', background: '#eef2ff', padding: '3px 8px', borderRadius: 6 },
+    titleText: { fontSize: 13, fontWeight: 700, color: '#1e293b' },
+    authorWrap: { display: 'flex', flexDirection: 'column', gap: 2 },
+    authorName: { fontSize: 12, fontWeight: 700, color: '#374151' },
+    authorEmail: { fontSize: 11, color: '#94a3b8' },
+    date: { fontSize: 12, color: '#94a3b8' },
+    statusBadge: { fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 6 },
+    statusDone: { color: '#10b981', background: '#f0fdf4' },
+    statusPending: { color: '#f59e0b', background: '#fffbeb' },
 
-    replyBtn: { backgroundColor: '#0F172A', color: '#FFF', border: 'none', padding: '10px 20px', borderRadius: '10px', fontSize: '12px', fontWeight: 800, cursor: 'pointer' },
-    replyForm: { marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' },
-    textarea: { width: '100%', height: '100px', padding: '15px', borderRadius: '12px', border: '1px solid #E2E8F0', fontSize: '14px', outline: 'none', resize: 'none' },
-    formActions: { display: 'flex', gap: '10px' },
-    submitBtn: { backgroundColor: '#6366F1', color: '#FFF', border: 'none', padding: '10px 20px', borderRadius: '10px', fontSize: '12px', fontWeight: 800, cursor: 'pointer' },
-    cancelBtn: { backgroundColor: '#E2E8F0', color: '#64748B', border: 'none', padding: '10px 20px', borderRadius: '10px', fontSize: '12px', fontWeight: 800, cursor: 'pointer' },
+    empty: { textAlign: 'center', padding: '60px 0', color: '#94a3b8', fontSize: 13, fontWeight: 600 },
 
-    pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', marginTop: '40px' },
-    pageBtn: { backgroundColor: '#FFF', border: '1px solid #E2E8F0', padding: '8px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: '#64748B' },
-    pageNumbers: { display: 'flex', gap: '8px' },
-    pageNumber: { width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px', border: 'none', fontSize: '14px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }
+    pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 20 },
+    pageBtn: { width: 34, height: 34, borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' },
+    pageActive: { background: '#1e3a5f', color: '#fff', border: '1px solid #1e3a5f' },
+
+    overlay: { position: 'fixed', inset: 0, background: 'rgba(15,32,56,0.35)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 },
+    modal: { background: '#fff', borderRadius: 20, width: '100%', maxWidth: 560, padding: '28px 32px', boxShadow: '0 24px 60px rgba(0,0,0,0.18)', animation: 'iqModalIn 0.22s ease', maxHeight: '85vh', overflowY: 'auto' },
+    modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+    modalTitle: { margin: '0 0 8px', fontSize: 17, fontWeight: 800, color: '#1e293b' },
+    modalMeta: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 },
+    closeBtn: { background: 'none', border: '1px solid #e2e8f0', borderRadius: 8, color: '#94a3b8', cursor: 'pointer', padding: '5px 7px', display: 'inline-flex', alignItems: 'center' },
+    divider: { height: 1, background: '#f1f5f9', margin: '16px 0' },
+
+    contentBox: { background: '#f8fafc', borderRadius: 12, padding: '16px 18px', marginBottom: 16 },
+    contentLabel: { margin: '0 0 8px', fontSize: 10, fontWeight: 900, color: '#94a3b8', letterSpacing: 1.5, textTransform: 'uppercase' as const },
+    contentText: { margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.8, whiteSpace: 'pre-wrap' },
+    replyBox: { background: '#f0fdf4', borderRadius: 12, padding: '16px 18px', borderLeft: '3px solid #10b981' },
+    replyLabel: { margin: '0 0 8px', fontSize: 10, fontWeight: 900, color: '#6366f1', letterSpacing: 1.5, textTransform: 'uppercase' as const },
+    replyText: { margin: 0, fontSize: 13, color: '#1e293b', lineHeight: 1.8, whiteSpace: 'pre-wrap' },
+    textarea: { width: '100%', height: 120, padding: '12px 14px', borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 13, outline: 'none', resize: 'none', color: '#1e293b', background: '#fff', boxSizing: 'border-box' },
+    submitBtn: { padding: '8px 20px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer' },
+    cancelBtn: { padding: '8px 16px', background: '#f1f5f9', color: '#64748b', border: 'none', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer' },
 };
 
 export default AdminInquiryManagement;

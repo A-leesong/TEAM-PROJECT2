@@ -42,14 +42,36 @@ public class AdminController {
 
     @GetMapping("/users/all")
     public ResponseEntity<List<?>> getAllUsers() {
-        return ResponseEntity.ok(userRepository.findAll());
+        return ResponseEntity.ok(
+            userRepository.findAll().stream().map(u -> {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("id", u.getId());
+                m.put("nickname", u.getNickname());
+                m.put("email", u.getEmail());
+                m.put("role", u.getRole());
+                m.put("tokenBalance", u.getTokenBalance());
+                m.put("isActive", u.getIsSuspended() == null || !u.getIsSuspended());
+                m.put("createdAt", u.getCreatedAt());
+                return m;
+            }).collect(Collectors.toList())
+        );
     }
 
-    @GetMapping("/users/search") 
-    public ResponseEntity<List<?>> searchUser(@RequestParam String keyword) { 
-        Optional<?> user = userRepository.findByNickname(keyword)
-                .or(() -> userRepository.findByEmail(keyword));
-        return ResponseEntity.ok(user.map(List::of).orElse(List.of()));
+    @GetMapping("/users/search")
+    public ResponseEntity<List<?>> searchUser(@RequestParam String keyword) {
+        return ResponseEntity.ok(
+            userRepository.searchByKeyword(keyword).stream().map(u -> {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("id", u.getId());
+                m.put("nickname", u.getNickname());
+                m.put("email", u.getEmail());
+                m.put("role", u.getRole());
+                m.put("tokenBalance", u.getTokenBalance());
+                m.put("isActive", u.getIsSuspended() == null || !u.getIsSuspended());
+                m.put("createdAt", u.getCreatedAt());
+                return m;
+            }).collect(Collectors.toList())
+        );
     }
 
     @PatchMapping("/users/{userId}/status")
@@ -111,6 +133,12 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getAdminReports(status, keyword, pageable));
     }
 
+    @DeleteMapping("/artworks/{id}")
+    public ResponseEntity<String> deleteArtwork(@PathVariable String id) {
+        adminService.deleteArtwork(id);
+        return ResponseEntity.ok("작품이 삭제되었습니다.");
+    }
+
     @PatchMapping("/artworks/{id}/visibility")
     public ResponseEntity<String> toggleArtworkVisibility(@PathVariable String id) {
         adminService.toggleArtworkVisibility(id);
@@ -120,6 +148,12 @@ public class AdminController {
     @GetMapping("/main-images")
     public ResponseEntity<List<MainBannerResponse>> getMainImages() {
         return ResponseEntity.ok(adminService.getMainImages());
+    }
+
+    @DeleteMapping("/main-images/{slotNumber}")
+    public ResponseEntity<String> clearMainImageSlot(@PathVariable Integer slotNumber) {
+        adminService.clearMainImageSlot(slotNumber);
+        return ResponseEntity.ok("슬롯이 초기화되었습니다.");
     }
 
     @PostMapping("/main-images/assign")

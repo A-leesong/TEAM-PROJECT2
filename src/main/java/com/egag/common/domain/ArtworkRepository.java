@@ -32,4 +32,8 @@ public interface ArtworkRepository extends JpaRepository<Artwork, String> {
 
     @Query("SELECT a FROM Artwork a LEFT JOIN FETCH a.user")
     org.springframework.data.domain.Page<Artwork> findAllWithUser(org.springframework.data.domain.Pageable pageable);
+
+    @Query(value = "SELECT a FROM Artwork a LEFT JOIN FETCH a.user ORDER BY a.likeCount DESC",
+           countQuery = "SELECT COUNT(a) FROM Artwork a")
+    org.springframework.data.domain.Page<Artwork> findAllWithUserOrderByLikeCountDesc(org.springframework.data.domain.Pageable pageable);
 }

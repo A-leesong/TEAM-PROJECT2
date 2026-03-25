@@ -65,16 +65,28 @@ public class InquiryService {
     @Transactional(readOnly = true)
     public Page<InquiryAdminResponse> getAdminInquiries(String status, String keyword, Pageable pageable) {
         Page<Inquiry> inquiries;
-        
-        if (keyword != null && !keyword.trim().isEmpty()) {
+        boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
+        boolean hasStatus = status != null && !"all".equals(status);
+
+        if (hasKeyword && hasStatus) {
+            inquiries = inquiryRepository.findByStatusAndTitleContainingOrStatusAndContentContainingOrderByCreatedAtDesc(
+                    status, keyword, status, keyword, pageable);
+        } else if (hasKeyword) {
             inquiries = inquiryRepository.findByTitleContainingOrContentContainingOrderByCreatedAtDesc(keyword, keyword, pageable);
-        } else if ("pending".equals(status)) {
-            inquiries = inquiryRepository.findByStatusOrderByCreatedAtAsc("pending", pageable);
+        } else if (hasStatus) {
+            inquiries = inquiryRepository.findByStatusOrderByCreatedAtAsc(status, pageable);
         } else {
             inquiries = inquiryRepository.findAllByOrderByCreatedAtDesc(pageable);
         }
-        
+
         return inquiries.map(InquiryAdminResponse::from);
+    }
+
+    // ── 내 문의 내역 조회 ────────────────────────────────────────
+    @Transactional(readOnly = true)
+    public List<InquiryAdminResponse> getMyInquiries(String userId) {
+        return inquiryRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream().map(InquiryAdminResponse::from).collect(Collectors.toList());
     }
 
     // ── 어드민: 미응답 문의 최대 N건 (대시보드용) ──────────────────
