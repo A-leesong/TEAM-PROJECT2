@@ -31,6 +31,10 @@ public class UserService {
     private final com.egag.common.service.CloudinaryService cloudinaryService;
 
 
+    public boolean isNicknameTaken(String nickname) {
+        return userRepository.existsByNickname(nickname);
+    }
+
     public UserProfileResponse getMe(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
@@ -61,6 +65,9 @@ public class UserService {
                 throw new RuntimeException("이미 사용 중인 이메일입니다.");
             }
             user.setSubEmail(req.getEmail());
+        }
+        if (req.getProfileImageUrl() != null && !req.getProfileImageUrl().isBlank()) {
+            user.setProfileImageUrl(req.getProfileImageUrl());
         }
 
         return new UserProfileResponse(userRepository.save(user));
@@ -166,6 +173,42 @@ public class UserService {
                 .followingCount(user.getFollowingCount() != null ? user.getFollowingCount() : 0)
                 .isFollowing(isFollowing)
                 .build();
+    }
+
+    public List<UserResponse> getFollowers(String userId, String currentUserId) {
+        return followRepository.findByFollowingId(userId).stream()
+                .map(f -> {
+                    User u = f.getFollower();
+                    boolean isFollowing = currentUserId != null &&
+                            followRepository.existsByFollowerIdAndFollowingId(currentUserId, u.getId());
+                    return UserResponse.builder()
+                            .id(u.getId())
+                            .nickname(u.getNickname())
+                            .profileImageUrl(u.getProfileImageUrl())
+                            .followerCount(u.getFollowerCount() != null ? u.getFollowerCount() : 0)
+                            .followingCount(u.getFollowingCount() != null ? u.getFollowingCount() : 0)
+                            .isFollowing(isFollowing)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    public List<UserResponse> getFollowing(String userId, String currentUserId) {
+        return followRepository.findByFollowerId(userId).stream()
+                .map(f -> {
+                    User u = f.getFollowing();
+                    boolean isFollowing = currentUserId != null &&
+                            followRepository.existsByFollowerIdAndFollowingId(currentUserId, u.getId());
+                    return UserResponse.builder()
+                            .id(u.getId())
+                            .nickname(u.getNickname())
+                            .profileImageUrl(u.getProfileImageUrl())
+                            .followerCount(u.getFollowerCount() != null ? u.getFollowerCount() : 0)
+                            .followingCount(u.getFollowingCount() != null ? u.getFollowingCount() : 0)
+                            .isFollowing(isFollowing)
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
 
     @Transactional

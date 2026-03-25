@@ -578,7 +578,7 @@ export default function TimeAttack() {
         @keyframes ta-shake { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-7px); } 40%,80% { transform: translateX(7px); } }
         @keyframes ta-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
         @media (max-width: 600px) {
-          .ta-logo { height: 56px !important; }
+          .ta-logo { height: 19px !important; }
           .ta-color-btn { width: 18px !important; height: 18px !important; }
           .ta-color-picker { width: 18px !important; height: 18px !important; }
           .ta-width-btn { width: 26px !important; height: 26px !important; }
@@ -586,6 +586,9 @@ export default function TimeAttack() {
           .ta-hide-mobile { display: none !important; }
           .ta-subject-label { display: none !important; }
           .ta-drawings-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .ta-gameover-card { padding: 24px 20px !important; }
+          .ta-gameover-score { font-size: 34px !important; }
+          .ta-intro-card { padding: 32px 24px !important; }
         }
       `}</style>
 
@@ -599,7 +602,7 @@ export default function TimeAttack() {
         {/* ── INTRO ── */}
         {gamePhase === 'intro' && (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{
+            <div className="ta-intro-card" style={{
               background: 'white', borderRadius: 32, padding: '44px 48px',
               maxWidth: 460, width: '90%', textAlign: 'center',
               boxShadow: '0 24px 64px rgba(212,168,0,0.2)',
@@ -607,7 +610,7 @@ export default function TimeAttack() {
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22,
               animation: 'ta-pop 0.4s ease',
             }}>
-              <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 80 }} />
+              <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 27 }} />
               <div>
                 <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: '#d4a800', letterSpacing: 2, textTransform: 'uppercase' }}>
                   Time Attack
@@ -653,7 +656,7 @@ export default function TimeAttack() {
         {/* ── GAMEOVER ── */}
         {gamePhase === 'gameover' && (
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '32px 20px' }}>
-            <div style={{
+            <div className="ta-gameover-card" style={{
               background: 'white', borderRadius: 32, padding: '40px 44px',
               maxWidth: 820, width: '100%',
               boxShadow: '0 24px 64px rgba(212,168,0,0.25)',
@@ -671,7 +674,7 @@ export default function TimeAttack() {
                   : <IconSeedling size={64} color="#43aa8b" />}
                 </div>
                 <p style={{ margin: '0 0 4px', fontSize: 13, color: '#d4a800', fontWeight: 700, letterSpacing: 1 }}>게임 종료!</p>
-                <h2 style={{ margin: '0 0 4px', fontSize: 44, fontWeight: 900, color: '#1a1a2e', letterSpacing: -2 }}>
+                <h2 className="ta-gameover-score" style={{ margin: '0 0 4px', fontSize: 44, fontWeight: 900, color: '#1a1a2e', letterSpacing: -2 }}>
                   {score} <span style={{ fontSize: 20, color: '#9ca3af', fontWeight: 500 }}>/ {TOTAL_ROUNDS}</span>
                 </h2>
                 <p style={{ margin: 0, fontSize: 15, color: '#6b7280' }}>
@@ -792,7 +795,7 @@ export default function TimeAttack() {
             }}>
               <img src="/Egag_logo-removebg.png" alt="EgAg"
                 className="ta-logo"
-                style={{ height: 90, cursor: 'pointer', marginRight: 2 }}
+                style={{ height: 30, cursor: 'pointer', marginRight: 2 }}
                 onClick={() => setShowExitConfirm(true)}
               />
 
