@@ -82,6 +82,9 @@ export default function Notifications() {
           .notif-card { padding: 24px 16px !important; }
           .notif-modal { padding: 24px 20px !important; max-width: calc(100vw - 32px) !important; }
         }
+        @media (min-width: 641px) and (max-width: 860px) {
+          .notif-bg { padding: 100px 24px 60px !important; }
+        }
       `}</style>
 
       <main style={s.main}>
@@ -118,7 +121,6 @@ export default function Notifications() {
         {/* 알림 목록 */}
         {notifications.length === 0 ? (
           <div style={s.empty}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>🐣</div>
             <p style={{ margin: 0, fontSize: 15, color: '#9ca3af', fontWeight: 600 }}>아직 알림이 없어요</p>
           </div>
         ) : (
@@ -209,19 +211,40 @@ export default function Notifications() {
               </div>
 
               {/* 비주얼 */}
-              <div style={s.visual}>
-                {artSrc && (
+              {artSrc ? (
+                <div style={s.visual}>
                   <div style={s.artThumb}>
                     <img src={artSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
-                )}
-                <div style={{ ...s.profileThumb, border: `3px solid ${meta.color}` }}>
-                  {src
-                    ? <img src={src} alt={selected.actorNickname} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : <span style={{ fontSize: 20, fontWeight: 800, color: meta.color }}>{selected.actorNickname.charAt(0).toUpperCase()}</span>
-                  }
+                  <div style={{ ...s.profileThumb, border: `3px solid ${meta.color}` }}>
+                    {src
+                      ? <img src={src} alt={selected.actorNickname} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : <span style={{ fontSize: 20, fontWeight: 800, color: meta.color }}>{selected.actorNickname.charAt(0).toUpperCase()}</span>
+                    }
+                  </div>
                 </div>
-              </div>
+              ) : selected.type === 'FOLLOW' ? (
+                <div style={s.visualCenter}>
+                  <div style={{ ...s.visualBigAvatar, border: `3px solid ${meta.color}`, background: meta.bg }}>
+                    {src
+                      ? <img src={src} alt={selected.actorNickname} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                      : <span style={{ fontSize: 32, fontWeight: 900, color: meta.color }}>{selected.actorNickname.charAt(0).toUpperCase()}</span>
+                    }
+                  </div>
+                  <div style={{ ...s.visualIconBadge, background: meta.color }}>
+                    {meta.icon}
+                  </div>
+                </div>
+              ) : (
+                <div style={s.visualCenter}>
+                  <div style={{ ...s.visualIconBox, background: meta.bg }}>
+                    <MessageCircle size={36} color={meta.color} strokeWidth={2} />
+                  </div>
+                  <div style={{ ...s.visualIconBadge, background: meta.color }}>
+                    {meta.icon}
+                  </div>
+                </div>
+              )}
 
               {/* 메시지 */}
               <h3 style={s.modalTitle}>
@@ -390,6 +413,27 @@ const s: Record<string, React.CSSProperties> = {
     overflow: 'hidden', background: 'rgba(107,130,160,0.1)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+  },
+  visualCenter: {
+    position: 'relative', display: 'flex', justifyContent: 'center',
+    alignItems: 'center', height: 160, marginBottom: 24,
+  },
+  visualBigAvatar: {
+    width: 96, height: 96, borderRadius: '50%',
+    overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    boxShadow: '0 8px 28px rgba(0,0,0,0.12)',
+  },
+  visualIconBox: {
+    width: 96, height: 96, borderRadius: 24,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    boxShadow: '0 8px 28px rgba(0,0,0,0.08)',
+  },
+  visualIconBadge: {
+    position: 'absolute', bottom: 20, right: 'calc(50% - 58px)',
+    width: 28, height: 28, borderRadius: '50%',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    boxShadow: '0 3px 8px rgba(0,0,0,0.18)',
+    color: '#fff',
   },
   modalTitle: { fontSize: 18, fontWeight: 800, color: '#3d3d5c', margin: '0 0 8px' },
   modalDesc: { fontSize: 14, color: '#8a94a8', margin: '0 0 8px', lineHeight: 1.6 },

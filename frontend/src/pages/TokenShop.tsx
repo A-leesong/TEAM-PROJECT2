@@ -622,7 +622,7 @@ export default function TokenShop() {
           </button>
           <button
             style={{ display: 'block', margin: '14px auto 0', background: 'none', border: 'none', color: '#bbb', fontSize: 14, cursor: 'pointer', fontWeight: 600, transition: 'color 0.15s' }}
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/')}
             onMouseEnter={e => (e.currentTarget.style.color = '#7c3aed')}
             onMouseLeave={e => (e.currentTarget.style.color = '#bbb')}
           >홈으로</button>

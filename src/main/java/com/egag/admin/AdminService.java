@@ -128,9 +128,16 @@ public class AdminService {
     }
 
     @Transactional(readOnly = true)
-    public Page<AdminPaymentResponse> getAdminPayments(String keyword, Pageable pageable) {
+    public Page<AdminPaymentResponse> getAdminPayments(String keyword, LocalDateTime from, LocalDateTime to, Pageable pageable) {
         Page<com.egag.payment.Payment> payments;
-        if (keyword != null && !keyword.trim().isEmpty()) {
+        boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
+        boolean hasDate = from != null && to != null;
+
+        if (hasKeyword && hasDate) {
+            payments = paymentRepository.searchByKeywordAndDateBetween(keyword.trim(), from, to, pageable);
+        } else if (hasDate) {
+            payments = paymentRepository.findByCreatedAtBetween(from, to, pageable);
+        } else if (hasKeyword) {
             payments = paymentRepository.searchByKeyword(keyword.trim(), pageable);
         } else {
             payments = paymentRepository.findAllByOrderByCreatedAtDesc(pageable);
@@ -139,16 +146,32 @@ public class AdminService {
     }
 
     @Transactional(readOnly = true)
+    public long sumPaymentsBetween(LocalDateTime from, LocalDateTime to) {
+        Long result = paymentRepository.sumAmountBetween(from, to);
+        return result != null ? result : 0L;
+    }
+
+    @Transactional(readOnly = true)
     public Page<AdminReportResponse> getAdminReports(String status, String keyword, Pageable pageable) {
         Page<Report> reports;
         if (keyword != null && !keyword.trim().isEmpty()) {
             reports = reportRepository.findByReasonContainingOrArtworkTitleContaining(keyword.trim(), pageable);
-        } else if ("pending".equals(status)) {
-            reports = reportRepository.findByStatusOrderByCreatedAtDesc("pending", pageable);
+        } else if ("pending".equals(status) || "resolved".equals(status)) {
+            reports = reportRepository.findByStatusOrderByCreatedAtDesc(status, pageable);
         } else {
             reports = reportRepository.findAllByOrderByCreatedAtDesc(pageable);
         }
         return reports.map(AdminReportResponse::from);
+    }
+
+    @Transactional
+    public void resolveReport(String reportId, User admin) {
+        Report report = reportRepository.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("신고를 찾을 수 없습니다."));
+        report.setStatus("resolved");
+        report.setResolvedBy(admin);
+        report.setResolvedAt(LocalDateTime.now());
+        reportRepository.save(report);
     }
 
     @Transactional(readOnly = true)

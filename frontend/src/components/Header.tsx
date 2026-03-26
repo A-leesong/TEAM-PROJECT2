@@ -402,9 +402,9 @@ export default function Header({ hideOnScroll = false }: HeaderProps) {
                   </div>
                   {[
                     { label: '마이페이지', onClick: () => { setShowProfileMenu(false); navigate('/mypage') } },
+                    { label: '나의 문의', onClick: () => { setShowProfileMenu(false); navigate('/myinquiries') } },
                     { label: '출석체크', onClick: () => { setShowProfileMenu(false); setShowAttendanceModal(true) } },
                     { label: '알림', onClick: () => { setShowProfileMenu(false); navigate('/notifications') } },
-                    { label: '내 문의 내역', onClick: () => { setShowProfileMenu(false); navigate('/myinquiries') } },
                     ...(role === 'ADMIN' ? [{ label: '관리자 페이지', onClick: () => { setShowProfileMenu(false); navigate('/admin') } }] : []),
                     { label: '로그아웃', onClick: () => { setShowProfileMenu(false); handleLogout() }, danger: true },
                   ].map(({ label, onClick, danger }) => (
