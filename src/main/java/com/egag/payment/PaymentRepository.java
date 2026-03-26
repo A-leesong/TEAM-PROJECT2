@@ -27,4 +27,17 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
 
     @Query("SELECT p FROM Payment p WHERE p.user.nickname LIKE %:keyword% OR p.user.email LIKE %:keyword%")
     Page<Payment> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
+
+    @Query("SELECT p FROM Payment p WHERE p.createdAt BETWEEN :from AND :to ORDER BY p.createdAt DESC")
+    Page<Payment> findByCreatedAtBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to, Pageable pageable);
+
+    @Query("SELECT p FROM Payment p WHERE (p.user.nickname LIKE %:keyword% OR p.user.email LIKE %:keyword%) AND p.createdAt BETWEEN :from AND :to ORDER BY p.createdAt DESC")
+    Page<Payment> searchByKeywordAndDateBetween(@Param("keyword") String keyword, @Param("from") LocalDateTime from, @Param("to") LocalDateTime to, Pageable pageable);
+
+    @Query("SELECT SUM(p.amount) FROM Payment p WHERE p.createdAt BETWEEN :from AND :to")
+    Long sumAmountBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    // 📈 날짜별 수익 집계 (최근 N일)
+    @Query(value = "SELECT DATE(created_at) as date, SUM(amount) as total FROM payments WHERE created_at >= :since GROUP BY DATE(created_at) ORDER BY DATE(created_at)", nativeQuery = true)
+    List<Object[]> sumAmountByDateSince(@Param("since") LocalDateTime since);
 }

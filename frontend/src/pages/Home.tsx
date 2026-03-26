@@ -10,6 +10,19 @@ import type { ArtworkResponse } from '../types'
 import AttendanceModal, { getAttendDismissKey } from '../components/AttendanceModal'
 import { getTodayAttendance } from '../api/user'
 
+function useCarouselSize() {
+  const [vw, setVw] = useState(window.innerWidth)
+  useEffect(() => {
+    const onResize = () => setVw(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  if (vw < 480)  return { radius: 160, cardW: 130, cardH: 180, height: 280 }
+  if (vw < 640)  return { radius: 210, cardW: 160, cardH: 220, height: 340 }
+  if (vw < 860)  return { radius: 280, cardW: 190, cardH: 260, height: 400 }
+  return              { radius: 380, cardW: 230, cardH: 300, height: 480 }
+}
+
 function ArtworkCarousel() {
   const navigate = useNavigate()
   const [artworks, setArtworks] = useState<ArtworkResponse[]>([])
@@ -18,6 +31,7 @@ function ArtworkCarousel() {
   const angleRef = useRef(0)
   const rafRef = useRef<number | undefined>(undefined)
   const pausedRef = useRef(false)
+  const { radius, cardW, cardH, height } = useCarouselSize()
 
   useEffect(() => {
     getAdminMainImages()
@@ -58,13 +72,10 @@ function ArtworkCarousel() {
   if (items.length === 0) return null
 
   const n = items.length
-  const radius = 380
-  const cardW = 230
-  const cardH = 300
 
   return (
     <div
-      style={{ position: 'relative', zIndex: 2, width: '100%', height: 480, perspective: '2500px' }}
+      style={{ position: 'relative', zIndex: 2, width: '100%', height, perspective: '2500px' }}
     >
       <div style={{ position: 'absolute', top: '50%', left: '50%', width: 0, height: 0, transformStyle: 'preserve-3d' }}>
         <div ref={ringRef} style={{ transformStyle: 'preserve-3d' }}>

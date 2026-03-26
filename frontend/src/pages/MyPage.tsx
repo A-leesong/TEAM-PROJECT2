@@ -6,7 +6,7 @@ import { getMyProfile, updateMyProfile, changePassword, getMyArtworks, uploadPro
 import { updateArtworkTitle } from '../api/artwork'
 import type { UserProfile, ArtworkSummary } from '../api/user'
 import type { UserResponse } from '../types'
-import { Camera, Pencil, Globe, Lock, Download, Trash2, Ticket, ArrowRight, Eye, X } from 'lucide-react'
+import { Camera, Pencil, Globe, Lock, Download, Trash2, Ticket, ArrowRight, Eye, X, Pin } from 'lucide-react'
 
 type Tab = 'profile' | 'gallery'
 
@@ -29,6 +29,24 @@ export default function MyPage() {
   const [followListLoading, setFollowListLoading] = useState(false)
   const [galleryPage, setGalleryPage] = useState(1)
   const GALLERY_PAGE_SIZE = 6
+  const [pinnedIds, setPinnedIds] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('pinnedArtworkIds') || '[]') } catch { return [] }
+  })
+
+  const handlePin = (id: string) => {
+    setPinnedIds(prev => {
+      const next = prev.includes(id)
+        ? prev.filter(p => p !== id)
+        : [id, ...prev]
+      localStorage.setItem('pinnedArtworkIds', JSON.stringify(next))
+      return next
+    })
+  }
+
+  const sortedArtworks = [
+    ...pinnedIds.map(id => artworks.find(a => a.id === id)).filter(Boolean) as typeof artworks,
+    ...artworks.filter(a => !pinnedIds.includes(a.id)),
+  ]
 
   useEffect(() => {
     if (!isAuthenticated) { navigate('/login'); return }
@@ -115,6 +133,8 @@ export default function MyPage() {
       <Header />
       <style>{`
         @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes galleryIn { from{opacity:0;transform:translateY(10px) scale(0.985);filter:blur(6px)} to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)} }
+        .gallery-grid-wrap { animation: galleryIn 0.35s cubic-bezier(0.22,1,0.36,1) both; }
         .mp-tab:hover { color: #6B82A0 !important; }
         .mp-avatar-wrap:hover .mp-avatar-overlay { opacity: 1 !important; }
         .mp-gallery-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(107,130,160,0.18) !important; }
@@ -126,9 +146,14 @@ export default function MyPage() {
           .mp-stat-row { padding: 12px 16px !important; }
           .mp-btn-row { flex-direction: column !important; }
           .mp-follow-modal { padding: 24px 0 16px !important; }
+          .mp-gallery-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+        }
+        @media (max-width: 380px) {
+          .mp-gallery-grid { grid-template-columns: 1fr !important; }
         }
         @media (min-width: 641px) and (max-width: 860px) {
           .mp-card { padding: 32px 28px !important; }
+          .mp-gallery-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
       `}</style>
 
@@ -267,8 +292,9 @@ export default function MyPage() {
                   <h2 style={s.galleryTitle}>내 작품</h2>
                   <span style={s.galleryCount}>{artworks.length}개</span>
                 </div>
-                <div style={s.galleryGrid}>
-                  {artworks.slice((galleryPage - 1) * GALLERY_PAGE_SIZE, galleryPage * GALLERY_PAGE_SIZE).map((art, i) => (
+
+                <div key={galleryPage} className="gallery-grid-wrap mp-gallery-grid" style={s.galleryGrid}>
+                  {sortedArtworks.slice((galleryPage - 1) * GALLERY_PAGE_SIZE, galleryPage * GALLERY_PAGE_SIZE).map((art, i) => (
                     <div key={art.id} className="mp-gallery-card" style={{ ...s.galleryCard, animation: `fadeUp ${0.3 + i * 0.04}s ease both` }}>
                       {/* 이미지 영역 */}
                       <div style={s.galleryImgRow} onClick={() => {
@@ -326,9 +352,19 @@ export default function MyPage() {
                             title="삭제">
                             <Trash2 size={13} />
                           </button>
+                          <button
+                            style={{ ...s.galleryBtn, color: pinnedIds.includes(art.id) ? '#f59e0b' : '#c4b5d0' }}
+                            onClick={() => handlePin(art.id)}
+                            title={pinnedIds.includes(art.id) ? '고정 해제' : '대표 작품으로 고정'}>
+                            <Pin size={13} fill={pinnedIds.includes(art.id) ? '#f59e0b' : 'none'} />
+                          </button>
                         </div>
                       </div>
                     </div>
+                  ))}
+                  {/* 빈 슬롯 - 그리드 높이 고정 */}
+                  {Array.from({ length: GALLERY_PAGE_SIZE - sortedArtworks.slice((galleryPage - 1) * GALLERY_PAGE_SIZE, galleryPage * GALLERY_PAGE_SIZE).length }, (_, i) => (
+                    <div key={`ph-${i}`} style={{ ...s.galleryCard, visibility: 'hidden', pointerEvents: 'none', minHeight: 280 }} />
                   ))}
                 </div>
 
@@ -608,7 +644,7 @@ const s: Record<string, React.CSSProperties> = {
     background: 'rgba(107,130,160,0.1)', borderRadius: 6, padding: '2px 8px',
   },
   galleryGrid: {
-    display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 18,
+    display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gridAutoRows: '1fr', gap: 18,
     width: '100%',
   },
   galleryCard: {

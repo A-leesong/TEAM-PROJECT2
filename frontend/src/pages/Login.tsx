@@ -246,6 +246,10 @@ export default function Login() {
         @media (max-width: 640px) {
           .login-right { padding: 24px 20px !important; }
         }
+        @media (min-width: 701px) and (max-width: 860px) {
+          .login-left { flex: 0 0 260px !important; }
+          .login-right { padding: 36px 32px !important; }
+        }
         @keyframes hueShift {
           0%   { filter: hue-rotate(0deg); }
           100% { filter: hue-rotate(360deg); }
