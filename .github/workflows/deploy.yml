@@ -44,52 +44,67 @@ jobs:
       - name: Build Spring Boot JAR
         run: ./gradlew bootJar -x test
 
-      # 5. EC2에 JAR 파일 업로드
-      - name: Upload JAR to EC2
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: build/libs/*.jar
-          target: /home/ubuntu/app/
-          strip_components: 2
+      # 5. SSH 키 설정
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      # 6. EC2에서 앱 재시작
+      # 6. EC2에 JAR 파일 업로드
+      - name: Upload JAR to EC2
+        run: |
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            build/libs/*.jar \
+            ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:/home/ubuntu/app/app.jar
+
+      # 7. EC2에서 앱 재시작
       - name: Restart App on EC2
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            # 실행 중인 앱 종료
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'EOF'
             PID=$(lsof -ti:8080)
             if [ -n "$PID" ]; then
               kill -9 $PID
               echo "기존 프로세스 종료: $PID"
             fi
-
-            # 새 JAR 실행
             cd /home/ubuntu/app
             nohup java -jar \
               -Dspring.profiles.active=prod \
-              -DDB_USERNAME=${{ secrets.DB_USERNAME }} \
-              -DDB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-              -DGOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
-              -DGOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }} \
-              -DKAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }} \
-              -DMAIL_USERNAME=${{ secrets.MAIL_USERNAME }} \
-              -DMAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }} \
-              -DJWT_SECRET=${{ secrets.JWT_SECRET }} \
-              -DCLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }} \
-              -DCLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }} \
-              -DCLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }} \
-              -DOPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
-              -DAPP_BASE_URL=http://${{ secrets.EC2_HOST }}:8080 \
-              -DRESEND_API_KEY=${{ secrets.RESEND_API_KEY }} \
-              -DKAKAOPAY_SECRET_KEY=${{ secrets.KAKAOPAY_SECRET_KEY }} \
-              -DTOSS_SECRET_KEY=${{ secrets.TOSS_SECRET_KEY }} \
-              *.jar > app.log 2>&1 &
-
+              -DDB_USERNAME=$DB_USERNAME \
+              -DDB_PASSWORD=$DB_PASSWORD \
+              -DGOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID \
+              -DGOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET \
+              -DKAKAO_CLIENT_ID=$KAKAO_CLIENT_ID \
+              -DMAIL_USERNAME=$MAIL_USERNAME \
+              -DMAIL_PASSWORD=$MAIL_PASSWORD \
+              -DJWT_SECRET=$JWT_SECRET \
+              -DCLOUDINARY_CLOUD_NAME=$CLOUDINARY_CLOUD_NAME \
+              -DCLOUDINARY_API_KEY=$CLOUDINARY_API_KEY \
+              -DCLOUDINARY_API_SECRET=$CLOUDINARY_API_SECRET \
+              -DOPENAI_API_KEY=$OPENAI_API_KEY \
+              -DAPP_BASE_URL=http://$EC2_HOST:8080 \
+              -DRESEND_API_KEY=$RESEND_API_KEY \
+              -DKAKAOPAY_SECRET_KEY=$KAKAOPAY_SECRET_KEY \
+              -DTOSS_SECRET_KEY=$TOSS_SECRET_KEY \
+              app.jar > app.log 2>&1 &
             echo "앱 시작 완료"
+          EOF
+        env:
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          KAKAO_CLIENT_ID: ${{ secrets.KAKAO_CLIENT_ID }}
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          KAKAOPAY_SECRET_KEY: ${{ secrets.KAKAOPAY_SECRET_KEY }}
+          TOSS_SECRET_KEY: ${{ secrets.TOSS_SECRET_KEY }}
