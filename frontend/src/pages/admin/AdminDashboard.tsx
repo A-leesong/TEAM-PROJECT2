@@ -127,7 +127,7 @@ const AdminDashboard = () => {
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                             <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} dy={8} />
                             <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} tickFormatter={(v: number) => v >= 1000 ? `${Math.round(v/1000)}k` : String(v)} />
-                            <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.1)', fontSize: 12 }} formatter={(v: number | string | undefined) => [typeof v === 'number' ? `₩${v.toLocaleString()}` : '', '매출']} />
+                            <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.1)', fontSize: 12 }} formatter={(v: any) => [typeof v === 'number' ? `₩${v.toLocaleString()}` : '', '매출']} />
                             <Line type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={2.5}
                                 dot={{ r: 3, fill: '#8b5cf6', strokeWidth: 2, stroke: '#fff' }}
                                 activeDot={{ r: 5, strokeWidth: 0 }} />

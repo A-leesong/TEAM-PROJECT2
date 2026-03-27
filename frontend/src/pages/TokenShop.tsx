@@ -11,7 +11,6 @@ declare global {
 }
 
 const TOSS_CLIENT_KEY = (import.meta as any).env?.VITE_TOSS_CLIENT_KEY || ''
-const TOSS_WIDGET_KEY = (import.meta as any).env?.VITE_TOSS_WIDGET_KEY || ''
 
 type PayMethod = 'kakaopay' | 'tosspay' | 'card' | 'bank'
 
@@ -96,7 +95,7 @@ export default function TokenShop() {
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [tossModal, setTossModal] = useState(false)
-  const [tossModalReady, setTossModalReady] = useState(false)
+  const [tossModalReady] = useState(false)
   const [tossModalLoading, setTossModalLoading] = useState(false)
   const widgetsRef = useRef<any>(null)
   const tossOrderRef = useRef<string>('')
