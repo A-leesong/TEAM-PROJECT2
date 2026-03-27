@@ -1,0 +1,95 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 코드 체크아웃
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Node.js 설치 및 프론트엔드 빌드
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build Frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      # 3. 프론트 빌드 결과물을 Spring Boot static 폴더로 복사
+      - name: Copy frontend build to Spring Boot static
+        run: |
+          rm -rf src/main/resources/static
+          mkdir -p src/main/resources/static
+          cp -r frontend/dist/. src/main/resources/static/
+
+      # 4. Java 17 설치 및 Spring Boot JAR 빌드
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build Spring Boot JAR
+        run: ./gradlew bootJar -x test
+
+      # 5. EC2에 JAR 파일 업로드
+      - name: Upload JAR to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: build/libs/*.jar
+          target: /home/ubuntu/app/
+          strip_components: 2
+
+      # 6. EC2에서 앱 재시작
+      - name: Restart App on EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # 실행 중인 앱 종료
+            PID=$(lsof -ti:8080)
+            if [ -n "$PID" ]; then
+              kill -9 $PID
+              echo "기존 프로세스 종료: $PID"
+            fi
+
+            # 새 JAR 실행
+            cd /home/ubuntu/app
+            nohup java -jar \
+              -Dspring.profiles.active=prod \
+              -DDB_USERNAME=${{ secrets.DB_USERNAME }} \
+              -DDB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+              -DGOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
+              -DGOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }} \
+              -DKAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }} \
+              -DMAIL_USERNAME=${{ secrets.MAIL_USERNAME }} \
+              -DMAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }} \
+              -DJWT_SECRET=${{ secrets.JWT_SECRET }} \
+              -DCLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }} \
+              -DCLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }} \
+              -DCLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }} \
+              -DOPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+              -DAPP_BASE_URL=http://${{ secrets.EC2_HOST }}:8080 \
+              -DRESEND_API_KEY=${{ secrets.RESEND_API_KEY }} \
+              -DKAKAOPAY_SECRET_KEY=${{ secrets.KAKAOPAY_SECRET_KEY }} \
+              -DTOSS_SECRET_KEY=${{ secrets.TOSS_SECRET_KEY }} \
+              *.jar > app.log 2>&1 &
+
+            echo "앱 시작 완료"
