@@ -2,7 +2,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { consumeToken } from '../api/canvas'
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { useAuthStore } from '../stores/useAuthStore'
-import { Pencil, Layers, Ticket, Sparkles, Timer, ArrowRight, MessageCircle, ChevronUp, CalendarCheck } from 'lucide-react'
+import { Ticket, Sparkles, MessageCircle, ChevronUp, CalendarCheck } from 'lucide-react'
 import Header from '../components/Header'
 import { exploreArtworks } from '../api/artwork'
 import { getAdminMainImages } from '../api/adminApi'
@@ -30,8 +30,7 @@ function ArtworkCarousel() {
   const ringRef = useRef<HTMLDivElement>(null)
   const angleRef = useRef(0)
   const rafRef = useRef<number | undefined>(undefined)
-  const pausedRef = useRef(false)
-  const { radius, cardW, cardH, height } = useCarouselSize()
+const { radius, cardW, cardH, height } = useCarouselSize()
 
   useEffect(() => {
     getAdminMainImages()
@@ -164,8 +163,7 @@ export default function Home() {
   const [showAttendanceModal, setShowAttendanceModal] = useState(false)
   const [hasAttendedToday, setHasAttendedToday] = useState(false)
   const featureRefs = useRef<(HTMLDivElement | null)[]>([])
-  const featureSectionRef = useRef<HTMLElement | null>(null)
-  const [showTop, setShowTop] = useState(false)
+const [showTop, setShowTop] = useState(false)
   const [showTokenModal, setShowTokenModal] = useState<'canvas' | 'deco' | 'time' | null>(null)
 
   useEffect(() => {

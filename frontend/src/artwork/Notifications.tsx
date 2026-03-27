@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Heart, UserPlus, Palette, ChevronUp, Trash2, MessageCircle } from 'lucide-react'
 import { getNotifications, markNotificationsAsRead, deleteNotification, deleteAllNotifications } from '../api/notification'

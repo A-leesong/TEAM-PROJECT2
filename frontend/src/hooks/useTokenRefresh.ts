@@ -12,7 +12,7 @@ function getTokenExpiry(token: string): number | null {
 }
 
 export function useTokenRefresh() {
-  const { accessToken, setAuth, nickname, userId, tokenBalance, logout } = useAuthStore()
+  const { accessToken, nickname, userId, tokenBalance, logout } = useAuthStore()
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {

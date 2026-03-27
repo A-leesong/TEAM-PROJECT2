@@ -16,7 +16,7 @@ export default function ArtworkDetail() {
   const [loading, setLoading] = useState(true)
   const [slideIndex, setSlideIndex] = useState(0)
   const [isLiked, setIsLiked] = useState(false)
-  const [isAnimating, setIsAnimating] = useState(false)
+  const [, setIsAnimating] = useState(false)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [reportReason, setReportReason] = useState('부적절한 콘텐츠')
   const [reportDescription, setReportDescription] = useState('')
@@ -591,5 +591,4 @@ const s: Record<string, React.CSSProperties> = {
     background: 'rgba(107,130,160,0.08)',
     border: '1.5px solid rgba(107,130,160,0.2)', borderRadius: 12, cursor: 'pointer',
   },
-  backBtn: {},
 }

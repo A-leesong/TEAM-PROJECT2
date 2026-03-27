@@ -219,32 +219,6 @@ export default function TokenShop() {
     }
   }
 
-  const openTossModal = () => {
-    if (!selectedPkg || !TOSS_WIDGET_KEY) return
-    setTossModal(true)
-    setTossModalReady(false)
-    widgetsRef.current = null
-    const merchantUid = `egag_${selectedPkg.id.toLowerCase()}_${Date.now()}`
-    tossOrderRef.current = merchantUid
-    sessionStorage.setItem('toss_package_id', selectedPkg.id)
-    setTimeout(async () => {
-      try {
-        const tossPayments = await loadTossPayments(TOSS_WIDGET_KEY)
-        const customerKey = (nickname || 'user').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 50)
-        const widgets = tossPayments.widgets({ customerKey })
-        await widgets.setAmount({ currency: 'KRW', value: selectedPkg.price })
-        await widgets.renderPaymentMethods({ selector: '#toss-modal-methods', variantKey: 'DEFAULT' })
-        await widgets.renderAgreement({ selector: '#toss-modal-agreement', variantKey: 'AGREEMENT' })
-        widgetsRef.current = widgets
-        setTossModalReady(true)
-      } catch (e: any) {
-        sessionStorage.removeItem('toss_package_id')
-        setTossModal(false)
-        setError(e?.message || '토스 결제 초기화 실패')
-      }
-    }, 100)
-  }
-
   const handleTossModalPay = async () => {
     if (!widgetsRef.current || !selectedPkg) return
     setTossModalLoading(true)

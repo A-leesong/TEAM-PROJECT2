@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { consumeToken } from '../api/canvas'
 import { useAuthStore } from '../stores/useAuthStore'
@@ -6,7 +6,7 @@ import { Ticket, Bell } from 'lucide-react'
 import { getUnreadCount } from '../api/notification'
 import { getTodayAttendance } from '../api/user'
 import AttendanceModal from './AttendanceModal'
-import ChickStamp from './ChickStamp'
+
 
 interface HeaderProps {
   hideOnScroll?: boolean
@@ -29,7 +29,7 @@ export default function Header({ hideOnScroll = false }: HeaderProps) {
   const [showDrawMenu, setShowDrawMenu] = useState(false)
   const [showTokenModal, setShowTokenModal] = useState<'canvas' | 'deco' | 'time' | null>(null)
   const [showAttendanceModal, setShowAttendanceModal] = useState(false)
-  const [hasAttendedToday, setHasAttendedToday] = useState(false)
+  const [, setHasAttendedToday] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
   const drawRef = useRef<HTMLDivElement>(null)
 

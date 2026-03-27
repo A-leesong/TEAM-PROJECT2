@@ -397,21 +397,6 @@ export default function TimeAttack() {
     return stageRef.current.toDataURL({ pixelRatio: 1, mimeType: 'image/png' })
   }
 
-  const handleSuccess = useCallback(() => {
-    if (gamePhaseRef.current !== 'drawing') return
-    gamePhaseRef.current = 'success'
-    clearTimers()
-    const imageDataUrl = captureDrawing()
-    setScore(s => s + 1)
-    setRoundResults(prev => [...prev, {
-      subject: currentSubjectsRef.current[currentRoundRef.current],
-      success: true,
-      guess: currentAiGuessRef.current,
-      imageDataUrl,
-    }])
-    setGamePhase('success')
-  }, [clearTimers])
-
   const handleTimeout = useCallback(() => {
     if (gamePhaseRef.current !== 'drawing') return
     const success = aiCorrectRef.current
