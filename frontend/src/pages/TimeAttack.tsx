@@ -2,7 +2,9 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Stage, Layer, Line, Rect } from 'react-konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
-import { identifyCanvas } from '../api/canvas'
+import { identifyCanvas, consumeToken } from '../api/canvas'
+import { useAuthStore } from '../stores/useAuthStore'
+import { Ticket } from 'lucide-react'
 
 const COLORS = [
   '#1a1a2e', '#e63946', '#f4a261', '#f9c74f',
@@ -357,6 +359,8 @@ export default function TimeAttack() {
   const [aiCorrect, setAiCorrect] = useState(false)
   const [roundResults, setRoundResults] = useState<RoundResult[]>([])
   const [showExitConfirm, setShowExitConfirm] = useState(false)
+  const [showRetryModal, setShowRetryModal] = useState(false)
+  const { tokenBalance, setTokenBalance } = useAuthStore()
   const [feedbackTarget, setFeedbackTarget] = useState<RoundResult | null>(null)
   const [feedbackReason, setFeedbackReason] = useState('')
   const [feedbackLoading, setFeedbackLoading] = useState(false)
@@ -574,7 +578,7 @@ export default function TimeAttack() {
         @keyframes ta-shake { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-7px); } 40%,80% { transform: translateX(7px); } }
         @keyframes ta-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
         @media (max-width: 600px) {
-          .ta-logo { height: 56px !important; }
+          .ta-logo { height: 19px !important; }
           .ta-color-btn { width: 18px !important; height: 18px !important; }
           .ta-color-picker { width: 18px !important; height: 18px !important; }
           .ta-width-btn { width: 26px !important; height: 26px !important; }
@@ -582,6 +586,9 @@ export default function TimeAttack() {
           .ta-hide-mobile { display: none !important; }
           .ta-subject-label { display: none !important; }
           .ta-drawings-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .ta-gameover-card { padding: 24px 20px !important; }
+          .ta-gameover-score { font-size: 34px !important; }
+          .ta-intro-card { padding: 32px 24px !important; }
         }
       `}</style>
 
@@ -595,7 +602,7 @@ export default function TimeAttack() {
         {/* ── INTRO ── */}
         {gamePhase === 'intro' && (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{
+            <div className="ta-intro-card" style={{
               background: 'white', borderRadius: 32, padding: '44px 48px',
               maxWidth: 460, width: '90%', textAlign: 'center',
               boxShadow: '0 24px 64px rgba(212,168,0,0.2)',
@@ -603,7 +610,7 @@ export default function TimeAttack() {
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22,
               animation: 'ta-pop 0.4s ease',
             }}>
-              <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 80 }} />
+              <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 27 }} />
               <div>
                 <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: '#d4a800', letterSpacing: 2, textTransform: 'uppercase' }}>
                   Time Attack
@@ -649,7 +656,7 @@ export default function TimeAttack() {
         {/* ── GAMEOVER ── */}
         {gamePhase === 'gameover' && (
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '32px 20px' }}>
-            <div style={{
+            <div className="ta-gameover-card" style={{
               background: 'white', borderRadius: 32, padding: '40px 44px',
               maxWidth: 820, width: '100%',
               boxShadow: '0 24px 64px rgba(212,168,0,0.25)',
@@ -667,7 +674,7 @@ export default function TimeAttack() {
                   : <IconSeedling size={64} color="#43aa8b" />}
                 </div>
                 <p style={{ margin: '0 0 4px', fontSize: 13, color: '#d4a800', fontWeight: 700, letterSpacing: 1 }}>게임 종료!</p>
-                <h2 style={{ margin: '0 0 4px', fontSize: 44, fontWeight: 900, color: '#1a1a2e', letterSpacing: -2 }}>
+                <h2 className="ta-gameover-score" style={{ margin: '0 0 4px', fontSize: 44, fontWeight: 900, color: '#1a1a2e', letterSpacing: -2 }}>
                   {score} <span style={{ fontSize: 20, color: '#9ca3af', fontWeight: 500 }}>/ {TOTAL_ROUNDS}</span>
                 </h2>
                 <p style={{ margin: 0, fontSize: 15, color: '#6b7280' }}>
@@ -752,7 +759,7 @@ export default function TimeAttack() {
               )}
 
               <div style={{ display: 'flex', gap: 10, width: '100%' }}>
-                <button className="ta-btn-soft" onClick={startGame} style={{
+                <button className="ta-btn-soft" onClick={() => setShowRetryModal(true)} style={{
                   flex: 1, padding: '14px', borderRadius: 14,
                   border: '1.5px solid #fde68a', background: 'white',
                   color: '#c8a000', fontSize: 15, fontWeight: 700, cursor: 'pointer',
@@ -788,7 +795,7 @@ export default function TimeAttack() {
             }}>
               <img src="/Egag_logo-removebg.png" alt="EgAg"
                 className="ta-logo"
-                style={{ height: 90, cursor: 'pointer', marginRight: 2 }}
+                style={{ height: 30, cursor: 'pointer', marginRight: 2 }}
                 onClick={() => setShowExitConfirm(true)}
               />
 
@@ -1172,6 +1179,78 @@ export default function TimeAttack() {
               </div>
             </div>
           </Overlay>
+        )}
+
+        {/* ── RETRY TOKEN MODAL ── */}
+        {showRetryModal && (
+          <div
+            onClick={() => setShowRetryModal(false)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 500,
+              background: 'rgba(10,8,20,0.6)', backdropFilter: 'blur(8px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '24px',
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: 'rgba(255,255,255,0.97)',
+                borderRadius: 28, padding: '40px 36px',
+                width: '100%', maxWidth: 380,
+                boxShadow: '0 24px 80px rgba(0,0,0,0.18)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+                textAlign: 'center',
+              }}
+            >
+              <div style={{
+                width: 56, height: 56, borderRadius: 16,
+                background: 'rgba(212,168,0,0.12)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+              }}>
+                <Ticket size={26} color="#b08800" />
+              </div>
+              <h3 style={{ fontSize: 20, fontWeight: 900, margin: 0, color: '#1a1a2e', letterSpacing: -0.5 }}>
+                토큰 1개가 필요해요
+              </h3>
+              <p style={{ fontSize: 14, color: '#8a8aaa', lineHeight: 1.75, margin: '4px 0 8px' }}>
+                시간초 그림판을 다시 시작할 때 토큰 1개가 차감돼요.
+                <br />현재 보유 토큰 <strong style={{ color: '#4a5a7a' }}>{tokenBalance}개</strong>
+              </p>
+              <div style={{ display: 'flex', gap: 10, width: '100%', marginTop: 8 }}>
+                <button
+                  onClick={() => setShowRetryModal(false)}
+                  style={{
+                    flex: 1, padding: '13px', fontSize: 15, fontWeight: 600,
+                    background: 'none', border: '1.5px solid #e2e8f0',
+                    borderRadius: 14, cursor: 'pointer', color: '#8a8aaa',
+                  }}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await consumeToken()
+                      setTokenBalance(res.tokenBalance)
+                    } catch {
+                      alert('토큰이 부족합니다.')
+                      return
+                    }
+                    setShowRetryModal(false)
+                    startGame()
+                  }}
+                  style={{
+                    flex: 1, padding: '13px', fontSize: 15, fontWeight: 700,
+                    background: 'linear-gradient(135deg, #d4a800, #b08800)',
+                    border: 'none', borderRadius: 14, cursor: 'pointer', color: '#fff',
+                  }}
+                >
+                  시작할게요!
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* ── DRAWING FEEDBACK MODAL ── */}

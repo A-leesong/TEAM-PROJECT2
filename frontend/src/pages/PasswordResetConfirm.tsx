@@ -62,13 +62,20 @@ export default function PasswordResetConfirm() {
   if (phase === 'done') {
     return (
       <div style={s.bg}>
-        <div style={s.card}>
+        <style>{`
+          @media (max-width: 640px) {
+            .prc-card { width: calc(100vw - 32px) !important; padding: 0 20px 32px !important; border-radius: 16px !important; }
+            .prc-title { font-size: 18px !important; }
+          }
+          @media (min-width: 641px) and (max-width: 860px) {
+            .prc-card { width: calc(100vw - 64px) !important; max-width: 440px !important; padding: 0 36px 40px !important; }
+          }
+        `}</style>
+        <div style={s.card} className="prc-card">
           <div style={s.logo} onClick={() => navigate('/')} role="button">
-            <span style={s.logoIcon}>🪞</span>
-            <span style={s.logoText}>Decal<b>co</b></span>
+            <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 64, marginTop: 40, marginBottom: 20 }} />
           </div>
-          <div style={s.bigIcon}>🎉</div>
-          <h1 style={s.title}>비밀번호가 변경됐습니다</h1>
+          <h1 style={s.title} className="prc-title">비밀번호가 변경됐습니다</h1>
           <p style={s.desc}>새 비밀번호로 로그인해주세요.</p>
           <button style={s.btnPrimary} onClick={() => navigate('/login')}>
             로그인하러 가기
@@ -82,13 +89,21 @@ export default function PasswordResetConfirm() {
   if (phase === 'invalid') {
     return (
       <div style={s.bg}>
-        <div style={s.card}>
+        <style>{`
+          @media (max-width: 640px) {
+            .prc-card { width: calc(100vw - 32px) !important; padding: 0 20px 32px !important; border-radius: 16px !important; }
+            .prc-title { font-size: 18px !important; }
+          }
+          @media (min-width: 641px) and (max-width: 860px) {
+            .prc-card { width: calc(100vw - 64px) !important; max-width: 440px !important; padding: 0 36px 40px !important; }
+          }
+        `}</style>
+        <div style={s.card} className="prc-card">
           <div style={s.logo} onClick={() => navigate('/')} role="button">
-            <span style={s.logoIcon}>🪞</span>
-            <span style={s.logoText}>Decal<b>co</b></span>
+            <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 64, marginTop: 40, marginBottom: 20 }} />
           </div>
           <div style={s.bigIcon}>⚠️</div>
-          <h1 style={s.title}>유효하지 않은 링크</h1>
+          <h1 style={s.title} className="prc-title">유효하지 않은 링크</h1>
           <p style={s.desc}>링크가 만료되었거나 이미 사용된 링크입니다.</p>
           <button style={s.btnPrimary} onClick={() => navigate('/password-reset')}>
             비밀번호 찾기 다시 시도
@@ -101,13 +116,21 @@ export default function PasswordResetConfirm() {
   // ─── 비밀번호 입력 폼 ────────────────────────────────────
   return (
     <div style={s.bg}>
-      <div style={s.card}>
+      <style>{`
+        @media (max-width: 640px) {
+          .prc-card { width: calc(100vw - 32px) !important; padding: 0 20px 32px !important; border-radius: 16px !important; }
+          .prc-title { font-size: 18px !important; }
+        }
+        @media (min-width: 641px) and (max-width: 860px) {
+          .prc-card { width: calc(100vw - 64px) !important; max-width: 440px !important; padding: 0 36px 40px !important; }
+        }
+      `}</style>
+      <div style={s.card} className="prc-card">
         <div style={s.logo} onClick={() => navigate('/')} role="button">
-          <span style={s.logoIcon}>🪞</span>
-          <span style={s.logoText}>Decal<b>co</b></span>
+          <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 64, marginTop: 40, marginBottom: 20 }} />
         </div>
 
-        <h1 style={s.title}>새 비밀번호 설정</h1>
+        <h1 style={s.title} className="prc-title">새 비밀번호 설정</h1>
         <p style={s.subtitle}>사용할 새 비밀번호를 입력해주세요.</p>
 
         {errors.general && <div style={s.errorBanner}>{errors.general}</div>}
@@ -154,16 +177,16 @@ const s: Record<string, React.CSSProperties> = {
     padding: '32px 16px',
   },
   card: {
-    background: '#fff', borderRadius: 24, padding: '44px 48px',
+    background: '#fff', borderRadius: 24, padding: '0px 48px 44px',
     boxShadow: '0 8px 32px rgba(59,130,246,0.10)',
     width: '100%', maxWidth: 440,
     display: 'flex', flexDirection: 'column', alignItems: 'center',
   },
-  logo: { display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 28 },
+  logo: { display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 0 },
   logoIcon: { fontSize: 24 },
   logoText: { fontSize: 20, fontWeight: 700, color: '#1D4ED8', letterSpacing: -0.5 },
   bigIcon: { fontSize: 56, marginBottom: 16 },
-  title: { fontSize: 22, fontWeight: 800, color: '#0F172A', margin: '0 0 8px', textAlign: 'center' as const },
+  title: { fontSize: 22, fontWeight: 800, color: '#0F172A', margin: '0 0 8px', textAlign: 'center' as const, letterSpacing: 1.5 },
   subtitle: { fontSize: 14, color: '#64748B', margin: '0 0 24px', textAlign: 'center' as const },
   desc: { fontSize: 15, color: '#475569', margin: '0 0 28px', textAlign: 'center' as const },
   errorBanner: {

@@ -1,5 +1,6 @@
 package com.egag.artwork.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -26,4 +27,8 @@ public class ArtworkResponse {
     private Integer turnCount;
     private LocalDateTime createdAt;
     private LocalDateTime completedAt;
+    @JsonProperty("isLiked")
+    private boolean isLiked;
+    @JsonProperty("isFollowing")
+    private boolean isFollowing;
 }

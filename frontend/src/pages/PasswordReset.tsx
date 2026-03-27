@@ -70,13 +70,22 @@ export default function PasswordReset() {
   if (phase === 'sent') {
     return (
       <div style={s.bg}>
-        <div style={s.card}>
+        <style>{`
+          .pr-btn-primary:hover { opacity: 0.88; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(59,130,246,0.35); }
+          .pr-btn-primary:active { transform: translateY(0); }
+          @media (max-width: 640px) {
+            .pr-card { width: calc(100vw - 32px) !important; padding: 0 20px 32px !important; border-radius: 16px !important; }
+            .pr-title { font-size: 18px !important; }
+          }
+          @media (min-width: 641px) and (max-width: 860px) {
+            .pr-card { width: calc(100vw - 64px) !important; max-width: 440px !important; padding: 0 36px 40px !important; }
+          }
+        `}</style>
+        <div style={s.card} className="pr-card">
           <div style={s.logo} onClick={() => navigate('/')} role="button">
-            <span style={s.logoIcon}>🪞</span>
-            <span style={s.logoText}>Decal<b>co</b></span>
+            <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 64, marginTop: 40, marginBottom: 20 }} />
           </div>
-          <div style={s.sentIcon}>📬</div>
-          <h1 style={s.title}>이메일을 확인해주세요</h1>
+          <h1 style={s.title} className="pr-title">이메일을 확인해주세요</h1>
           <p style={s.sentDesc}>
             <strong>{form.email}</strong>로<br />
             비밀번호 재설정 링크를 발송했습니다.<br />
@@ -86,7 +95,7 @@ export default function PasswordReset() {
             메일이 오지 않는 경우 스팸함을 확인하거나<br />
             잠시 후 다시 시도해주세요.
           </p>
-          <button style={s.btnPrimary} onClick={() => navigate('/login')}>
+          <button className="pr-btn-primary" style={{ ...s.btnPrimary, flex: 'unset', width: '100%' }} onClick={() => navigate('/login')}>
             로그인으로 돌아가기
           </button>
         </div>
@@ -97,13 +106,30 @@ export default function PasswordReset() {
   // ─── 입력 폼 화면 ───────────────────────────────────────
   return (
     <div style={s.bg}>
-      <div style={s.card}>
+      <style>{`
+        .pr-input:focus { border-color: #6B82A0 !important; box-shadow: 0 0 0 3px rgba(107,130,160,0.12); }
+        .pr-input.error:focus { border-color: #EF4444 !important; box-shadow: 0 0 0 3px rgba(239,68,68,0.1); }
+        .pr-btn-secondary:hover { background: #f5f5f7 !important; color: #374151 !important; }
+        .pr-btn-primary:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(59,130,246,0.35); }
+        .pr-btn-primary:active { transform: translateY(0); }
+        .pr-link:hover { color: #c47a8a !important; text-decoration: underline !important; }
+        @media (max-width: 640px) {
+          .pr-card { width: calc(100vw - 32px) !important; padding: 0 20px 32px !important; border-radius: 16px !important; }
+          .pr-title { font-size: 18px !important; }
+          .pr-btn-row { flex-direction: column !important; }
+          .pr-btn-row .pr-btn-secondary { flex: unset !important; width: 100% !important; }
+          .pr-btn-row .pr-btn-primary { flex: unset !important; width: 100% !important; }
+        }
+        @media (min-width: 641px) and (max-width: 860px) {
+          .pr-card { width: calc(100vw - 64px) !important; max-width: 440px !important; padding: 0 36px 40px !important; }
+        }
+      `}</style>
+      <div style={s.card} className="pr-card">
         <div style={s.logo} onClick={() => navigate('/')} role="button">
-          <span style={s.logoIcon}>🪞</span>
-          <span style={s.logoText}>Decal<b>co</b></span>
+          <img src="/Egag_logo-removebg.png" alt="EgAg" style={{ height: 64, marginTop: 40, marginBottom: 20 }} />
         </div>
 
-        <h1 style={s.title}>비밀번호 찾기</h1>
+        <h1 style={s.title} className="pr-title">비밀번호 찾기</h1>
         <p style={s.subtitle}>가입 시 입력하신 정보를 입력해주세요.</p>
 
         {errors.general && <div style={s.errorBanner}>{errors.general}</div>}
@@ -139,11 +165,12 @@ export default function PasswordReset() {
             {errors.email && <span style={s.fieldError}>{errors.email}</span>}
           </div>
 
-          <div style={s.btnRow}>
-            <button style={s.btnSecondary} type="button" onClick={() => navigate('/')}>
-              ← 메인으로
+          <div style={s.btnRow} className="pr-btn-row">
+            <button className="pr-btn-secondary" style={s.btnSecondary} type="button" onClick={() => navigate('/')}>
+              취소
             </button>
             <button
+              className="pr-btn-primary"
               style={{ ...s.btnPrimary, opacity: loading ? 0.7 : 1 }}
               type="submit" disabled={loading}
             >
@@ -154,7 +181,7 @@ export default function PasswordReset() {
 
         <p style={s.bottomText}>
           비밀번호가 기억나셨나요?{' '}
-          <Link to="/login" style={s.link}>로그인</Link>
+          <Link to="/login" className="pr-link" style={s.link}>로그인</Link>
         </p>
       </div>
     </div>
@@ -169,12 +196,12 @@ const s: Record<string, React.CSSProperties> = {
     padding: '32px 16px',
   },
   card: {
-    background: '#fff', borderRadius: 24, padding: '44px 48px',
+    background: '#fff', borderRadius: 24, padding: '0px 48px 44px',
     boxShadow: '0 8px 32px rgba(59,130,246,0.10)',
     width: '100%', maxWidth: 440,
     display: 'flex', flexDirection: 'column', alignItems: 'center',
   },
-  logo: { display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 28 },
+  logo: { display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 0 },
   logoIcon: { fontSize: 24 },
   logoText: { fontSize: 20, fontWeight: 700, color: '#1D4ED8', letterSpacing: -0.5 },
   title: { fontSize: 22, fontWeight: 800, color: '#0F172A', margin: '0 0 8px', letterSpacing: 1 },
@@ -198,18 +225,19 @@ const s: Record<string, React.CSSProperties> = {
   btnRow: { display: 'flex', gap: 10, marginTop: 4 },
   btnSecondary: {
     flex: '0 0 auto', padding: '13px 20px', fontSize: 15, fontWeight: 600,
-    background: 'linear-gradient(135deg, #BAE6FD, #E0F2FE)', color: '#0369A1',
-    border: '1px solid #7DD3FC', borderRadius: 10, cursor: 'pointer',
-    whiteSpace: 'nowrap' as const,
+    background: '#fff', color: '#6b7280',
+    border: '1.5px solid #e5e7eb', borderRadius: 10, cursor: 'pointer',
+    whiteSpace: 'nowrap' as const, transition: 'all 0.15s',
   },
   btnPrimary: {
     flex: 1, padding: '13px', fontSize: 16, fontWeight: 700,
     background: 'linear-gradient(135deg, #3B82F6, #6366F1)',
     color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer',
+    transition: 'all 0.18s',
   },
-  bottomText: { fontSize: 14, color: '#64748B', marginTop: 20 },
-  link: { color: '#3B82F6', fontWeight: 600, textDecoration: 'none' },
-  sentIcon: { fontSize: 56, marginBottom: 16 },
+  bottomText: { fontSize: 14, color: '#64748B', marginTop: 20, textAlign: 'center' as const },
+  link: { color: '#6B82A0', fontWeight: 600, textDecoration: 'none', transition: 'color 0.15s' },
+  sentIcon: { fontSize: 56, marginBottom: 56 },
   sentDesc: {
     fontSize: 15, color: '#334155', textAlign: 'center' as const,
     lineHeight: 1.8, margin: '0 0 12px',

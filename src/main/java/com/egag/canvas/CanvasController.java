@@ -37,6 +37,27 @@ public class CanvasController {
         return ResponseEntity.ok(imageTransformService.identifySubject(body.get("canvasBase64")));
     }
 
+    @PostMapping("/consume-token")
+    public ResponseEntity<Map<String, Integer>> consumeToken(
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        if (userDetails == null) {
+            throw new CustomException(HttpStatus.UNAUTHORIZED, "NOT_AUTHENTICATED", "로그인이 필요합니다.");
+        }
+
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new CustomException(HttpStatus.UNAUTHORIZED, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."));
+
+        if (user.getTokenBalance() < 1) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "INSUFFICIENT_TOKEN", "토큰이 부족합니다.");
+        }
+
+        user.setTokenBalance(user.getTokenBalance() - 1);
+        userRepository.save(user);
+
+        return ResponseEntity.ok(Map.of("tokenBalance", user.getTokenBalance()));
+    }
+
     @PostMapping("/transform")
     public ResponseEntity<TransformResponse> transform(
             @RequestBody TransformRequest request,

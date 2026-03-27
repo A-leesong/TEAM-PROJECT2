@@ -8,20 +8,14 @@ import com.egag.artwork.dto.ArtworkResponse;
 import com.egag.user.dto.UserResponse;
 import com.egag.common.exception.CustomException;
 import org.springframework.http.HttpStatus;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,11 +25,15 @@ public class UserService {
     private final UserRepository userRepository;
     private final ArtworkRepository artworkRepository;
     private final FollowRepository followRepository;
+    private final com.egag.artwork.LikeRepository likeRepository;
     private final com.egag.notification.NotificationService notificationService;
     private final PasswordEncoder passwordEncoder;
+    private final com.egag.common.service.CloudinaryService cloudinaryService;
 
-    @Value("${app.upload-dir:uploads/profiles}")
-    private String uploadDir;
+
+    public boolean isNicknameTaken(String nickname) {
+        return userRepository.existsByNickname(nickname);
+    }
 
     public UserProfileResponse getMe(String email) {
         User user = userRepository.findByEmail(email)
@@ -67,6 +65,9 @@ public class UserService {
                 throw new RuntimeException("이미 사용 중인 이메일입니다.");
             }
             user.setSubEmail(req.getEmail());
+        }
+        if (req.getProfileImageUrl() != null && !req.getProfileImageUrl().isBlank()) {
+            user.setProfileImageUrl(req.getProfileImageUrl());
         }
 
         return new UserProfileResponse(userRepository.save(user));
@@ -125,26 +126,15 @@ public class UserService {
     public UserProfileResponse uploadProfilePhoto(String email, MultipartFile file) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
-        try {
-            Path dir = Paths.get(uploadDir);
-            Files.createDirectories(dir);
+        
+        // Cloudinary에 업로드 (로컬 저장 대신)
+        String imageUrl = cloudinaryService.uploadFile(file, "profiles");
 
-            String ext = "";
-            String original = file.getOriginalFilename();
-            if (original != null && original.contains(".")) {
-                ext = original.substring(original.lastIndexOf("."));
-            }
-            String filename = UUID.randomUUID() + ext;
-            Files.write(dir.resolve(filename), file.getBytes());
-
-            user.setProfileImageUrl("/uploads/profiles/" + filename);
-            return new UserProfileResponse(userRepository.save(user));
-        } catch (IOException e) {
-            throw new RuntimeException("사진 업로드에 실패했습니다.");
-        }
+        user.setProfileImageUrl(imageUrl);
+        return new UserProfileResponse(userRepository.save(user));
     }
 
-    public List<ArtworkResponse> getUserArtworks(String userId, boolean onlyPublic, String status) {
+    public List<ArtworkResponse> getUserArtworks(String userId, boolean onlyPublic, String status, String currentUserId) {
         List<Artwork> artworks;
         if (onlyPublic) {
             if (status != null && !status.equals("all")) {
@@ -160,7 +150,7 @@ public class UserService {
             }
         }
         return artworks.stream()
-                .map(this::convertToArtworkResponse)
+                .map(art -> convertToArtworkResponse(art, currentUserId))
                 .collect(Collectors.toList());
     }
 
@@ -185,6 +175,42 @@ public class UserService {
                 .build();
     }
 
+    public List<UserResponse> getFollowers(String userId, String currentUserId) {
+        return followRepository.findByFollowingId(userId).stream()
+                .map(f -> {
+                    User u = f.getFollower();
+                    boolean isFollowing = currentUserId != null &&
+                            followRepository.existsByFollowerIdAndFollowingId(currentUserId, u.getId());
+                    return UserResponse.builder()
+                            .id(u.getId())
+                            .nickname(u.getNickname())
+                            .profileImageUrl(u.getProfileImageUrl())
+                            .followerCount(u.getFollowerCount() != null ? u.getFollowerCount() : 0)
+                            .followingCount(u.getFollowingCount() != null ? u.getFollowingCount() : 0)
+                            .isFollowing(isFollowing)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    public List<UserResponse> getFollowing(String userId, String currentUserId) {
+        return followRepository.findByFollowerId(userId).stream()
+                .map(f -> {
+                    User u = f.getFollowing();
+                    boolean isFollowing = currentUserId != null &&
+                            followRepository.existsByFollowerIdAndFollowingId(currentUserId, u.getId());
+                    return UserResponse.builder()
+                            .id(u.getId())
+                            .nickname(u.getNickname())
+                            .profileImageUrl(u.getProfileImageUrl())
+                            .followerCount(u.getFollowerCount() != null ? u.getFollowerCount() : 0)
+                            .followingCount(u.getFollowingCount() != null ? u.getFollowingCount() : 0)
+                            .isFollowing(isFollowing)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public void toggleFollow(String followerId, String followingId) {
         if (followerId.equals(followingId)) {
@@ -200,8 +226,8 @@ public class UserService {
 
         if (existingFollow.isPresent()) {
             followRepository.delete(existingFollow.get());
-            follower.setFollowingCount(Math.max(0, follower.getFollowingCount() - 1));
-            following.setFollowerCount(Math.max(0, following.getFollowerCount() - 1));
+            userRepository.decrementFollowingCount(followerId); // 원자적 감소
+            userRepository.decrementFollowerCount(followingId); // 원자적 감소
         } else {
             Follow follow = Follow.builder()
                     .id(java.util.UUID.randomUUID().toString())
@@ -209,16 +235,21 @@ public class UserService {
                     .following(following)
                     .build();
             followRepository.save(follow);
-            follower.setFollowingCount(follower.getFollowingCount() + 1);
-            following.setFollowerCount(following.getFollowerCount() + 1);
+            userRepository.incrementFollowingCount(followerId); // 원자적 증가
+            userRepository.incrementFollowerCount(followingId); // 원자적 증가
             
             notificationService.createFollowNotification(following, follower); // Enabled
         }
-        userRepository.save(follower);
-        userRepository.save(following);
+        // userRepository.save(follower); // 더 이상 필요 없음
+        // userRepository.save(following);
     }
 
-    private ArtworkResponse convertToArtworkResponse(Artwork artwork) {
+    private ArtworkResponse convertToArtworkResponse(Artwork artwork, String currentUserId) {
+        boolean isLiked = false;
+        if (currentUserId != null) {
+            isLiked = likeRepository.existsByUserIdAndArtworkId(currentUserId, artwork.getId());
+        }
+
         return ArtworkResponse.builder()
                 .id(artwork.getId())
                 .userId(artwork.getUser().getId())
@@ -233,6 +264,7 @@ public class UserService {
                 .turnCount(artwork.getTurnCount())
                 .createdAt(artwork.getCreatedAt())
                 .completedAt(artwork.getCompletedAt())
+                .isLiked(isLiked)
                 .build();
     }
 }

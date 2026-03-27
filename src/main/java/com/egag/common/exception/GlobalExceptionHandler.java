@@ -6,6 +6,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import java.util.Map;
 
@@ -33,6 +35,12 @@ public class GlobalExceptionHandler {
         log.error("❌ 서버 오류: {}", e.getMessage(), e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", Map.of("code", "INTERNAL_ERROR", "message", e.getMessage() != null ? e.getMessage() : "서버 오류가 발생했습니다")));
+    }
+
+    @ExceptionHandler({UsernameNotFoundException.class, BadCredentialsException.class})
+    public ResponseEntity<Map<String, Object>> handleAuthException(Exception e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", Map.of("code", "AUTH_FAILED", "message", "이메일 또는 비밀번호가 올바르지 않습니다.")));
     }
 
     @ExceptionHandler(Exception.class)

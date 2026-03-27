@@ -1,150 +1,251 @@
 import { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
-import { Navigate } from 'react-router-dom';
+import { 
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
+    ResponsiveContainer, AreaChart, Area 
+} from 'recharts';
+import { getAdminDashboardStats, getAdminWeeklyStats, type WeeklyStat, type ArtworkStat } from '../../api/adminApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 
-// 📈 대시보드 데이터 타입
-interface DashboardStats {
-    totalUsers: number;
-    todayNewUsers: number;
-    totalSales: number;
-    todaySales: number;
-    suspendedUsers: number;
-    activeUsers: number;
-}
-
 const AdminDashboard = () => {
-    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-    const role = useAuthStore((state) => state.role);
-    const nickname = useAuthStore((state) => state.nickname);
-
-    const [stats, setStats] = useState<DashboardStats | null>(null);
+    const { accessToken } = useAuthStore();
+    const [stats, setStats] = useState({
+        totalUsers: 0,
+        activeArtworks: 0,
+        pendingInquiries: 0,
+        todaySales: 0,
+        topArtworks: [] as ArtworkStat[]
+    });
+    const [weeklyData, setWeeklyData] = useState<WeeklyStat[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // 🔄 통계 데이터 가져오기
-    const fetchStats = useCallback(async () => {
+    const fetchDashboardData = useCallback(async () => {
+        if (!accessToken) return;
         try {
             setLoading(true);
-            const token = useAuthStore.getState().accessToken; // 👈 스토어에서 직접 토큰 가져오기
-
-            const res = await axios.get('/api/admin/dashboard/stats', {
-                headers: {
-                    Authorization: `Bearer ${token}` // 👈 헤더에 토큰 실어주기
-                }
-            });
-            setStats(res.data);
-        } catch (err) {
-            console.error("통계 데이터 로딩 실패:", err);
+            const [statsData, weekly] = await Promise.all([
+                getAdminDashboardStats(),
+                getAdminWeeklyStats()
+            ]);
+            setStats(statsData);
+            setWeeklyData(weekly || []);
+        } catch (error) {
+            console.error("Dashboard data error:", error);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [accessToken]);
 
     useEffect(() => {
-        if (isAuthenticated && role === 'ADMIN') {
-            fetchStats();
-        }
-    }, [isAuthenticated, role, fetchStats]);
+        void fetchDashboardData();
+    }, [fetchDashboardData]);
 
-    if (!isAuthenticated || role !== 'ADMIN') {
-        return <Navigate to="/" replace />;
-    }
+    const statCards = [
+        { title: '총 사용자', value: (stats?.totalUsers || 0).toLocaleString(), icon: '👤', color: '#6366F1' },
+        { title: '활성 작품', value: (stats?.activeArtworks || 0).toLocaleString(), icon: '🎨', color: '#8B5CF6' },
+        { title: '대기 문의', value: (stats?.pendingInquiries || 0).toLocaleString(), icon: '📬', color: '#EC4899' },
+        { title: '오늘 매출', value: `₩${(stats?.todaySales || 0).toLocaleString()}`, icon: '💰', color: '#10B981' },
+    ];
 
     return (
         <div style={s.container}>
             <header style={s.header}>
-                <h1 style={s.title}>📊 서비스 대시보드</h1>
-                <p style={s.meta}>환영합니다, <strong>{nickname}</strong> 관리자님! 오늘의 현황입니다. 🐣</p>
+                <div>
+                    <h1 style={s.title}>오버뷰</h1>
+                    <p style={s.subtitle}>다시 오신 것을 환영합니다. 오늘의 현황입니다. ⚡</p>
+                </div>
+                <button onClick={() => void fetchDashboardData()} style={s.refreshBtn}>
+                    <span style={{ marginRight: 6 }}>🔄</span> {loading ? '동기화 중...' : '데이터 새로고침'}
+                </button>
             </header>
 
-            {loading ? (
-                <div style={s.emptyState}>데이터를 불러오는 중입니다... 🔄</div>
-            ) : stats ? (
-                <div style={s.grid}>
-                    {/* 카드 1: 유저 현황 */}
-                    <div style={s.card}>
-                        <h3 style={s.cardLabel}>👥 전체 유저</h3>
-                        <div style={s.cardValue}>{stats.totalUsers.toLocaleString()} 명</div>
-                        <p style={s.cardSub}>오늘 신규: <span style={{color: '#10B981'}}>+{stats.todayNewUsers}</span></p>
+            {/* 🚀 Giant Stat Cards */}
+            <div style={s.grid}>
+                {statCards.map((card, idx) => (
+                    <div key={idx} style={s.card}>
+                        <div style={s.cardTop}>
+                            <span style={s.cardIcon}>{card.icon}</span>
+                            <span style={s.cardLabel}>{card.title}</span>
+                        </div>
+                        <div style={s.cardValue}>{card.value}</div>
+                        <div style={{...s.cardTrend, color: card.color}}>
+                            <span style={{ opacity: 0.8 }}>PREV:</span>
+                            <span style={s.trendLabel}>N/A</span>
+                        </div>
                     </div>
+                ))}
+            </div>
 
-                    {/* 카드 2: 매출 현황 */}
-                    <div style={{...s.card, borderLeft: '6px solid #8B5CF6'}}>
-                        <h3 style={s.cardLabel}>💰 누적 매출</h3>
-                        <div style={{...s.cardValue, color: '#7C3AED'}}>₩ {stats.totalSales.toLocaleString()}</div>
-                        <p style={s.cardSub}>오늘 매출: <span style={{fontWeight: 700}}>₩ {stats.todaySales.toLocaleString()}</span></p>
+            {/* 📊 Slick Monochromatic Charts */}
+            <div style={s.chartSection}>
+                <div style={s.chartCard}>
+                    <div style={s.chartHeader}>
+                        <h3 style={s.chartTitle}>사용자 증가 추이</h3>
+                        <p style={s.chartSubtitle}>주간 방문자 및 신규 가입자 현황</p>
                     </div>
-
-                    {/* 카드 3: 활성 상태 */}
-                    <div style={s.card}>
-                        <h3 style={s.cardLabel}>✅ 활성 유저</h3>
-                        <div style={{...s.cardValue, color: '#10B981'}}>{stats.activeUsers.toLocaleString()} 명</div>
-                        <p style={s.cardSub}>서비스 이용 중인 유저</p>
-                    </div>
-
-                    {/* 카드 4: 정지 상태 */}
-                    <div style={{...s.card, borderLeft: '6px solid #EF4444'}}>
-                        <h3 style={s.cardLabel}>🚫 정지 유저</h3>
-                        <div style={{...s.cardValue, color: '#EF4444'}}>{stats.suspendedUsers.toLocaleString()} 명</div>
-                        <p style={s.cardSub}>운영 정책 위반 등의 사유</p>
+                    <div style={s.chartBody}>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <AreaChart data={weeklyData}>
+                                <defs>
+                                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#6366F1" stopOpacity={0.1}/>
+                                        <stop offset="95%" stopColor="#6366F1" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                                <XAxis 
+                                    dataKey="date" 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{fill: '#94A3B8', fontSize: 12}}
+                                    dy={10}
+                                />
+                                <YAxis 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{fill: '#94A3B8', fontSize: 12}}
+                                />
+                                <Tooltip 
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                                />
+                                <Area 
+                                    type="monotone" 
+                                    dataKey="value" 
+                                    stroke="#6366F1" 
+                                    strokeWidth={3}
+                                    fillOpacity={1} 
+                                    fill="url(#colorValue)" 
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
                     </div>
                 </div>
-            ) : (
-                <div style={s.emptyState}>통계 데이터를 표시할 수 없습니다. 😥</div>
-            )}
 
-            {/* 💡 바로가기 섹션 */}
-            <div style={s.quickMenu}>
-                <h3 style={s.sectionSubTitle}>🚀 빠른 관리 메뉴</h3>
-                <div style={{display: 'flex', gap: '15px'}}>
-                    <button style={s.menuBtn} onClick={() => window.location.href='/admin/users'}>통합 관리하기</button>
-                    <button style={s.menuBtn} onClick={() => window.location.href='/admin/payments'}>결제 내역보기</button>
+                <div style={s.chartCard}>
+                    <div style={s.chartHeader}>
+                        <h3 style={s.chartTitle}>수익 스트림</h3>
+                        <p style={s.chartSubtitle}>일별 토큰 구매 트렌드</p>
+                    </div>
+                    <div style={s.chartBody}>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <LineChart data={weeklyData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                                <XAxis 
+                                    dataKey="date" 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{fill: '#94A3B8', fontSize: 12}}
+                                    dy={10}
+                                />
+                                <YAxis axisLine={false} tickLine={false} tick={{fill: '#94A3B8', fontSize: 12}} />
+                                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                                <Line 
+                                    type="stepAfter" 
+                                    dataKey="value" 
+                                    stroke="#8B5CF6" 
+                                    strokeWidth={3} 
+                                    dot={{ r: 4, fill: '#8B5CF6', strokeWidth: 2, stroke: '#FFF' }}
+                                    activeDot={{ r: 6, strokeWidth: 0 }}
+                                />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            </div>
+
+            <div style={{ ...s.chartSection, marginTop: '24px', gridTemplateColumns: '1fr' }}>
+                {/* 🏆 Trending Artworks */}
+                <div style={s.chartCard}>
+                    <div style={s.chartHeader}>
+                        <h3 style={s.chartTitle}>실시간 인기 작품 TOP 5</h3>
+                        <p style={s.chartSubtitle}>가장 많은 좋아요를 받은 작품들입니다.</p>
+                    </div>
+                    <div style={{ padding: '0 10px' }}>
+                        {stats.topArtworks?.length > 0 ? (
+                            stats.topArtworks.map((art, i) => (
+                                <div key={art.artworkId} style={s.productRow}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                        <div style={{ 
+                                            ...s.rankBadge, 
+                                            backgroundColor: i < 3 ? '#6366F1' : '#F1F5F9', 
+                                            color: i < 3 ? '#FFF' : '#94A3B8' 
+                                        }}>{i + 1}</div>
+                                        <div style={s.artThumbBox}>
+                                            <img src={art.imageUrl} alt={art.title} style={s.artThumb} />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <span style={{ fontSize: 14, fontWeight: 800, color: '#1E293B' }}>{art.title}</span>
+                                            <span style={{ fontSize: 12, color: '#94A3B8', fontWeight: 600 }}>by {art.author}</span>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <span style={{ fontSize: 14 }}>❤️</span>
+                                        <span style={{ fontSize: 15, fontWeight: 900, color: '#6366F1' }}>{art.likeCount}</span>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div style={s.emptyStateMini}>
+                                <span style={{ fontSize: 20, opacity: 0.15, marginBottom: 4 }}>🎨</span>
+                                <p style={{ fontSize: 11, fontWeight: 700, color: '#CBD5E1', margin: 0 }}>데이터 없음</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
     );
 };
 
-// 🌌 스타일 디자인
 const s: Record<string, React.CSSProperties> = {
-    container: { padding: '40px', maxWidth: '1100px', margin: '0 auto' },
-    header: { marginBottom: '40px' },
-    title: { fontSize: '32px', fontWeight: 800, color: '#4C1D95' },
-    meta: { color: '#6D28D9', fontSize: '16px', opacity: 0.9 },
-    grid: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-        gap: '25px',
-        marginBottom: '50px'
+    container: { animation: 'fadeIn 0.5s ease-out' },
+    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '40px' },
+    title: { fontSize: '32px', fontWeight: 900, color: '#1E293B', margin: 0, letterSpacing: '-1px' },
+    subtitle: { fontSize: '15px', color: '#64748B', fontWeight: 500, marginTop: '4px' },
+    refreshBtn: { 
+        padding: '10px 20px', backgroundColor: '#FFF', border: '1px solid #E2E8F0', 
+        borderRadius: '12px', color: '#1E293B', fontWeight: 700, fontSize: '13px', 
+        cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', transition: '0.2s' 
     },
-    card: {
-        backgroundColor: 'rgba(255, 255, 255, 0.8)',
-        backdropFilter: 'blur(10px)',
-        padding: '30px',
-        borderRadius: '25px',
-        boxShadow: '0 10px 20px rgba(139, 92, 246, 0.1)',
-        borderLeft: '6px solid #10B981', // 기본 초록색 포인트
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center'
+
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px', marginBottom: '40px' },
+    card: { 
+        backgroundColor: '#FFF', padding: '30px', borderRadius: '24px', 
+        border: '1px solid #F1F5F9', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.04)',
+        display: 'flex', flexDirection: 'column', transition: 'transform 0.3s ease'
     },
-    cardLabel: { fontSize: '15px', fontWeight: 700, color: '#6B7280', marginBottom: '10px' },
-    cardValue: { fontSize: '28px', fontWeight: 900, color: '#1F2937', marginBottom: '8px' },
-    cardSub: { fontSize: '14px', color: '#9CA3AF' },
-    quickMenu: { marginTop: '20px' },
-    sectionSubTitle: { fontSize: '20px', fontWeight: 800, color: '#5B21B6', marginBottom: '20px' },
-    menuBtn: {
-        padding: '15px 25px',
-        borderRadius: '15px',
-        border: 'none',
-        background: '#fff',
-        color: '#7C3AED',
-        fontWeight: 700,
-        cursor: 'pointer',
-        boxShadow: '0 4px 10px rgba(0,0,0,0.05)',
-        transition: 'all 0.2s'
+    cardTop: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' },
+    cardIcon: { fontSize: '20px' },
+    cardLabel: { fontSize: '14px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' },
+    cardValue: { fontSize: '36px', fontWeight: 900, color: '#0F172A', marginBottom: '10px', letterSpacing: '-1px' },
+    cardTrend: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 800 },
+    trendLabel: { color: '#94A3B8', fontWeight: 500 },
+
+    chartSection: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' },
+    chartCard: { 
+        backgroundColor: '#FFF', padding: '30px', borderRadius: '30px', 
+        border: '1px solid #F1F5F9', boxShadow: '0 10px 40px -15px rgba(0,0,0,0.05)' 
     },
-    emptyState: { textAlign: 'center', padding: '100px', color: '#94A3B8', fontSize: '18px' }
+    chartHeader: { marginBottom: '30px' },
+    chartTitle: { fontSize: '18px', fontWeight: 800, color: '#1E293B', margin: 0 },
+    chartSubtitle: { fontSize: '13px', color: '#94A3B8', marginTop: '4px' },
+    chartBody: { width: '100%', height: '300px' },
+
+    productRow: { 
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+        padding: '16px 0', borderBottom: '1px solid #F1F5F9' 
+    },
+    rankBadge: { 
+        width: 24, height: 24, borderRadius: 6, display: 'flex', 
+        alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900 
+    },
+    artThumbBox: { width: '48px', height: '48px', borderRadius: '10px', overflow: 'hidden', backgroundColor: '#F1F5F9' },
+    artThumb: { width: '100%', height: '100%', objectFit: 'cover' },
+
+    emptyStateMini: { 
+        display: 'flex', flexDirection: 'column', alignItems: 'center', 
+        justifyContent: 'center', padding: '30px 0',
+        backgroundColor: 'transparent'
+    }
 };
 
 export default AdminDashboard;

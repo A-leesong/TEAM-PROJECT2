@@ -282,7 +282,10 @@ export default function TokenShop() {
                 <p style={{ margin: '6px 0 0', fontSize: 32, fontWeight: 900, color: '#5a30b0' }}>{tokenBalance}<span style={{ fontSize: 16, marginLeft: 4 }}>개</span></p>
               </div>
             )}
-            <button style={rs.btn} onClick={() => navigate('/')}>홈으로 돌아가기</button>
+            <button style={rs.btn} onClick={() => navigate('/')}
+              onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.08)')}
+              onMouseLeave={e => (e.currentTarget.style.filter = '')}
+            >홈으로 돌아가기</button>
           </div>
         </div>
       </div>
@@ -316,7 +319,10 @@ export default function TokenShop() {
               ))}
             </div>
             <p style={{ margin: 0, fontSize: 13, color: '#aaa', textAlign: 'center' }}>입금 확인 후 영업일 1일 이내 토큰이 지급됩니다.</p>
-            <button style={rs.btn} onClick={() => navigate('/')}>홈으로 돌아가기</button>
+            <button style={rs.btn} onClick={() => navigate('/')}
+              onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.08)')}
+              onMouseLeave={e => (e.currentTarget.style.filter = '')}
+            >홈으로 돌아가기</button>
           </div>
         </div>
       </div>
@@ -346,6 +352,11 @@ export default function TokenShop() {
         .pay-tab:hover { opacity: 0.88; transform: translateY(-2px); }
         .pay-btn-main { transition: filter 0.15s, transform 0.18s cubic-bezier(0.23,1,0.32,1); }
         .pay-btn-main:hover:not(:disabled) { filter: brightness(1.07); transform: translateY(-2px); }
+        @media (max-width: 640px) {
+          .ts-main { padding-top: 90px !important; }
+          .ts-carousel { height: 340px !important; }
+          .ts-pay-tabs { display: grid !important; grid-template-columns: 1fr 1fr !important; }
+        }
       `}</style>
 
       <Blobs />
@@ -374,7 +385,7 @@ export default function TokenShop() {
 
       <Header />
 
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '120px 20px 80px', position: 'relative', zIndex: 1 }}>
+      <main className="ts-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '120px 20px 80px', position: 'relative', zIndex: 1 }}>
 
         {/* ── 히어로 ── */}
         <div style={{ textAlign: 'center', marginBottom: 64, animation: 'slide-up 0.5s ease both' }}>
@@ -395,7 +406,7 @@ export default function TokenShop() {
         {/* ── 커버플로우 캐러셀 ── */}
         <div style={{ width: '100%', maxWidth: 800, marginBottom: 64, position: 'relative', marginTop: -70 }}>
           {/* 카드 무대 */}
-          <div style={{ position: 'relative', height: 420, perspective: '1000px', perspectiveOrigin: '50% 50%' }}>
+          <div className="ts-carousel" style={{ position: 'relative', height: 420, perspective: '1000px', perspectiveOrigin: '50% 50%' }}>
             {packages.map((pkg, i) => {
               const meta = PKG_META[pkg.id] ?? PKG_META.BASIC
               const len = packages.length
@@ -537,7 +548,7 @@ export default function TokenShop() {
         {/* ── 결제 수단 ── */}
         <div style={{ width: '100%', maxWidth: 640, marginBottom: 32, animation: 'slide-up 0.5s ease 0.35s both' }}>
           <p style={{ textAlign: 'center', fontSize: 12, fontWeight: 800, color: '#bbb', letterSpacing: 2, marginBottom: 14, textTransform: 'uppercase' }}>결제 수단 선택</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
+          <div className="ts-pay-tabs" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
             {PAY_METHODS.map(m => (
               <button
                 key={m.key}
@@ -610,8 +621,10 @@ export default function TokenShop() {
             {loading ? '처리 중...' : selectedPkg ? `${selectedPkg.price.toLocaleString()}원 결제하기` : '패키지를 선택해주세요'}
           </button>
           <button
-            style={{ display: 'block', margin: '14px auto 0', background: 'none', border: 'none', color: '#bbb', fontSize: 14, cursor: 'pointer', fontWeight: 600 }}
+            style={{ display: 'block', margin: '14px auto 0', background: 'none', border: 'none', color: '#bbb', fontSize: 14, cursor: 'pointer', fontWeight: 600, transition: 'color 0.15s' }}
             onClick={() => navigate(-1)}
+            onMouseEnter={e => (e.currentTarget.style.color = '#7c3aed')}
+            onMouseLeave={e => (e.currentTarget.style.color = '#bbb')}
           >홈으로</button>
         </div>
 

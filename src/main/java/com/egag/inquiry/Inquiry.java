@@ -41,6 +41,9 @@ public class Inquiry {
     @Builder.Default
     private String status = "pending";
 
+    @Column(columnDefinition = "TEXT")
+    private String reply;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "replied_by")
     private User repliedBy;
