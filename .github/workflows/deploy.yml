@@ -54,22 +54,16 @@ jobs:
 
       # 6. SSH 연결 테스트
       - name: Test SSH Connection
-        run: |
-          ssh -v -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "echo SSH 연결 성공"
+        run: ssh -v -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "echo SSH 연결 성공"
 
       # 7. EC2에 JAR 파일 업로드
       - name: Upload JAR to EC2
-        run: |
-          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            build/libs/*.jar \
-            ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:/home/ubuntu/app/app.jar
+        run: scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no build/libs/*.jar ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}:/home/ubuntu/app/app.jar
 
       # 8. EC2에서 앱 재시작
       - name: Restart App on EC2
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'EOF'
             PID=$(lsof -ti:8080)
             if [ -n "$PID" ]; then
               kill -9 $PID
