@@ -123,8 +123,13 @@ const Gallery = () => {
           </div>
           
           <div style={{ position: 'relative', overflow: 'hidden', padding: '20px 0' }}>
+            <style>{`
+              @media (max-width: 640px) { .gallery-slider { padding: 16px 20px !important; gap: 20px !important; } }
+              @media (min-width: 641px) and (max-width: 860px) { .gallery-slider { padding: 16px 40px !important; } }
+            `}</style>
             <div
               ref={sliderRef}
+              className="gallery-slider"
               style={{
                 display: 'flex',
                 gap: '40px',

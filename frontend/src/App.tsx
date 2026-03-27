@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from './stores/useAuthStore'
 import { useTokenRefresh } from './hooks/useTokenRefresh'
 
@@ -10,6 +10,7 @@ import Home from './pages/Home'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Inquiry from './pages/Inquiry'
+import MyInquiries from './pages/MyInquiries'
 import PasswordReset from './pages/PasswordReset'
 import PasswordResetConfirm from './pages/PasswordResetConfirm'
 import OAuthCallback from './pages/OAuthCallback'
@@ -37,6 +38,7 @@ import AdminLayout from './pages/admin/AdminLayout';
 import AdminImageManagement from './pages/admin/AdminImageManagement';
 import AdminInquiryManagement from './pages/admin/AdminInquiryManagement';
 import AdminArtworkManagement from './pages/admin/AdminArtworkManagement';
+import AdminArtworkList from './pages/admin/AdminArtworkList';
 
 function ScrollToTop() {
     const { pathname } = useLocation()
@@ -93,6 +95,7 @@ function App() {
 
                 {/* 고객지원 및 약관 */}
                 <Route path="/contact" element={<Inquiry />} />
+                <Route path="/myinquiries" element={<MyInquiries />} />
                 <Route path="/password-reset" element={<PasswordReset />} />
                 <Route path="/password-reset/confirm" element={<PasswordResetConfirm />} />
                 <Route path="/terms" element={<Policy type="TERMS" />} />
@@ -108,7 +111,7 @@ function App() {
 
                 {/* --- 🛡️ 어드민 영역 (중첩 라우팅) --- */}
                 <Route path="/admin" element={<AdminLayout />}>
-                    <Route index element={<AdminDashboard />} />
+                    <Route index element={<Navigate to="/admin/dashboard" replace />} />
                     <Route path="dashboard" element={<AdminDashboard />} />
                     {/* ✅ 통합 유저 관리 (토큰 + 상태 변경) */}
                     <Route path="users" element={<AdminUserManagement />} />
@@ -116,6 +119,7 @@ function App() {
                     <Route path="images" element={<AdminImageManagement />} />
                     <Route path="inquiries" element={<AdminInquiryManagement />} />
                     <Route path="artworks" element={<AdminArtworkManagement />} />
+                    <Route path="artwork-list" element={<AdminArtworkList />} />
                 </Route>
 
                 {/* 404 / 500 페이지 */}

@@ -51,15 +51,9 @@ export default function Notifications() {
     fetchNotifications()
   }, [])
 
-  const closeStory = () => {
-    setSelected(null)
-    setSelectedArtImageUrl(null)
-  }
-
   const goToDetail = () => {
     if (!selected) return
     if (selected.type === 'FOLLOW') navigate(`/user/${selected.actorId}`)
-    else if (selected.type === 'INQUIRY_REPLY') navigate('/contact')
     else if (selected.artworkId) navigate(`/artwork/${selected.artworkId}`)
     setSelected(null); setSelectedArtImageUrl(null)
   }
@@ -74,180 +68,6 @@ export default function Notifications() {
   return (
     <div style={s.bg} className="notif-bg">
       <Header />
-
-      {/* --- 전용 알림 스토리 모달 --- */}
-      {selected && (
-        <div className="modal-overlay" onClick={closeStory} style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(15px)',
-          zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: 24, animation: 'fadeIn 0.3s ease-out'
-        }}>
-          <div className="story-modal" onClick={e => e.stopPropagation()} style={{
-            width: '100%', maxWidth: 500, background: '#fff', borderRadius: 48,
-            padding: 40, position: 'relative', textAlign: 'center',
-            boxShadow: '0 30px 70px rgba(255, 133, 179, 0.15)',
-            border: '2px solid rgba(255, 255, 255, 0.8)',
-            transform: 'scale(1)', animation: 'scaleUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1)'
-          }}>
-            <button onClick={closeStory} style={{
-              position: 'absolute', top: 24, right: 24, background: '#F5F7FA',
-              border: 'none', width: 40, height: 40, borderRadius: 20,
-              fontSize: 20, cursor: 'pointer', color: '#8a8aaa', display: 'flex',
-              alignItems: 'center', justifyContent: 'center'
-            }}>✕</button>
-
-            {/* 비주얼 섹션 */}
-            <div style={{ position: 'relative', height: 240, marginBottom: 32, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-              {selected.type === 'LIKE' && (
-                <>
-                  <div style={{ 
-                    width: 200, height: 200, borderRadius: 32, overflow: 'hidden', 
-                    transform: 'rotate(-5deg)', boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
-                    border: '8px solid white'
-                  }}>
-                    <img src={selected.artworkId ? `http://localhost:8080/api/artwork/${selected.artworkId}/image` : '/placeholder.png'} 
-                         style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                  <div style={{ 
-                    position: 'absolute', bottom: -10, right: 100, width: 80, height: 80, 
-                    borderRadius: 30, overflow: 'hidden', border: '4px solid #fff',
-                    boxShadow: '0 8px 20px rgba(0,0,0,0.1)', transform: 'rotate(5deg)'
-                  }}>
-                    <img src={selected.actorProfileImage?.startsWith('/uploads') ? `http://localhost:8080${selected.actorProfileImage}` : (selected.actorProfileImage || '/default-avatar.png')} 
-                         style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                  <div style={{ position: 'absolute', top: 20, right: 80, fontSize: 64, animation: 'float 3s infinite ease-in-out' }}>❤️</div>
-                </>
-              )}
-              {selected.type === 'FOLLOW' && (
-                <>
-                  <div style={{ 
-                    width: 160, height: 160, borderRadius: 60, overflow: 'hidden', 
-                    boxShadow: '0 15px 40px rgba(165, 216, 255, 0.3)',
-                    border: '6px solid #A5D8FF'
-                  }}>
-                    <img src={selected.actorProfileImage?.startsWith('/uploads') ? `http://localhost:8080${selected.actorProfileImage}` : (selected.actorProfileImage || '/default-avatar.png')} 
-                         style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                  <div style={{ position: 'absolute', top: 0, left: 60, fontSize: 48, animation: 'float 4s infinite ease-in-out' }}>✨</div>
-                  <div style={{ position: 'absolute', bottom: 20, right: 60, fontSize: 40, animation: 'float 3s infinite reverse ease-in-out' }}>🌟</div>
-                </>
-              )}
-               {selected.type === 'FINISHED' && (
-                <>
-                  <div style={{ 
-                    width: 220, height: 180, borderRadius: 24, overflow: 'hidden', 
-                    boxShadow: '0 15px 40px rgba(0,0,0,0.1)', transform: 'rotate(-2deg)',
-                    border: '8px solid white'
-                  }}>
-                    <img src={selected.artworkId ? `http://localhost:8080/api/artwork/${selected.artworkId}/image` : '/placeholder.png'} 
-                         style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                  <div style={{ position: 'absolute', top: -20, left: '50%', transform: 'translateX(-50%)', fontSize: 50 }}>🎨</div>
-                </>
-              )}
-                  {/* TOKEN (기본값) */}
-                  {selected.type === 'TOKEN' && (
-                    <>
-                      <div style={{ 
-                        width: 160, height: 160, borderRadius: 40, background: 'rgba(255, 215, 0, 0.1)', 
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 80,
-                        boxShadow: '0 15px 40px rgba(255, 215, 0, 0.2)', border: '4px dashed #FFD700'
-                      }}>
-                        🪙
-                      </div>
-                      <div style={{ position: 'absolute', top: 0, left: 60, fontSize: 40, animation: 'float 4s infinite ease-in-out' }}>✨</div>
-                      <div style={{ position: 'absolute', bottom: 20, right: 60, fontSize: 40, animation: 'float 3s infinite reverse ease-in-out' }}>💎</div>
-                    </>
-                  )}
-                  {/* INQUIRY_REPLY */}
-                  {selected.type === 'INQUIRY_REPLY' && (
-                    <>
-                      <div style={{ 
-                        width: 160, height: 160, borderRadius: 40, background: 'rgba(107, 130, 160, 0.1)', 
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 80,
-                        boxShadow: '0 15px 40px rgba(107, 130, 160, 0.2)', border: '4px dashed #6B82A0'
-                      }}>
-                        ✉️
-                      </div>
-                      <div style={{ position: 'absolute', top: 0, left: 60, fontSize: 40, animation: 'float 4s infinite ease-in-out' }}>📝</div>
-                      <div style={{ position: 'absolute', bottom: 20, right: 60, fontSize: 40, animation: 'float 3s infinite reverse ease-in-out' }}>✨</div>
-                    </>
-                  )}
-            </div>
-
-            {/* 메시지 섹션 */}
-            <h2 style={{ fontSize: 24, fontWeight: 900, color: '#1a1a2e', marginBottom: 16, wordBreak: 'keep-all' }}>
-              {selected.type === 'LIKE' && `${selected.actorNickname} 친구가 이 그림을 아주 좋아한대요!`}
-              {selected.type === 'FOLLOW' && `${selected.actorNickname} 친구랑 이제 단짝이 되었어요!`}
-              {selected.type === 'FINISHED' && `와아! 내 그림이 드디어 완성됐어요!`}
-              {selected.type === 'TOKEN' && `관리자님이 보낸 보너스 선물이 도착했어요!`}
-              {selected.type === 'INQUIRY_REPLY' && `문의하신 내용에 답변이 도착했어요!`}
-            </h2>
-            <p style={{ fontSize: 16, color: '#6B82A0', fontWeight: 600, marginBottom: 32, lineHeight: 1.6 }}>
-              {selected.type === 'LIKE' && '내가 정성껏 그린 그림이 친구의 마음을 따뜻하게 만들었나 봐요. ❤️'}
-              {selected.type === 'FOLLOW' && '앞으로 서로의 멋진 그림들을 더 많이 구경할 수 있게 되었어요! ✨'}
-              {selected.type === 'FINISHED' && '지금 바로 완성된 그림을 확인하러 가볼까요? 🎨'}
-              {selected.type === 'TOKEN' && (
-                <>
-                  우리 커뮤니티를 빛내주셔서 감사합니다! ✨<br/>
-                  보상 토큰: <strong>{selected.amount || 1}개</strong><br/>
-                  사유: <span style={{ color: '#c47a8a' }}>{selected.reason || '관리자 보상'}</span>
-                </>
-              )}
-              {selected.type === 'INQUIRY_REPLY' && (
-                <>
-                  문의하신 <span style={{ color: '#6B82A0' }}>"{selected.reason}"</span>에 대한<br/>
-                  전문가 선생님의 답변이 등록되었습니다. 지금 바로 확인해보세요!
-                </>
-              )}
-            </p>
-
-            {/* 버튼 섹션 */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {(selected.type === 'LIKE' || selected.type === 'FINISHED') && (
-                <button 
-                  onClick={goToDetail}
-                  style={{ 
-                    background: 'linear-gradient(135deg, #FF85B3, #FF5C8D)', 
-                    color: '#fff', border: 'none', padding: '16px', 
-                    borderRadius: 24, fontSize: 16, fontWeight: 800, cursor: 'pointer',
-                    boxShadow: '0 8px 20px rgba(255, 92, 141, 0.25)' 
-                  }}
-                >
-                  그림 구경하러 가기! 🖼️
-                </button>
-              )}
-              {selected.type === 'TOKEN' && (
-                <button 
-                  onClick={() => navigate('/token-shop')}
-                  style={{ 
-                    background: 'linear-gradient(135deg, #FFD700, #DAA520)', 
-                    color: '#fff', border: 'none', padding: '16px', 
-                    borderRadius: 24, fontSize: 16, fontWeight: 800, cursor: 'pointer',
-                    boxShadow: '0 8px 20px rgba(218, 165, 32, 0.25)' 
-                  }}
-                >
-                  토큰 상점 가기! 🪙
-                </button>
-              )}
-              <button 
-                onClick={goToProfile}
-                style={{ 
-                  background: '#F5F7FA', color: '#4A6A8A', border: 'none', 
-                  padding: '16px', borderRadius: 24, fontSize: 16, 
-                  fontWeight: 800, cursor: 'pointer' 
-                }}
-              >
-                {selected.type === 'FOLLOW' ? '친구 프로필 보기 🐾' : '친구 소식 궁금해! 🐾'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 애니메이션 정의 */}
       <style>{`
         @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
         @keyframes scaleUp { from{opacity:0;transform:scale(0.96)} to{opacity:1;transform:scale(1)} }
@@ -261,6 +81,9 @@ export default function Notifications() {
           .notif-bg { padding: 80px 12px 60px !important; }
           .notif-card { padding: 24px 16px !important; }
           .notif-modal { padding: 24px 20px !important; max-width: calc(100vw - 32px) !important; }
+        }
+        @media (min-width: 641px) and (max-width: 860px) {
+          .notif-bg { padding: 100px 24px 60px !important; }
         }
       `}</style>
 
@@ -298,7 +121,6 @@ export default function Notifications() {
         {/* 알림 목록 */}
         {notifications.length === 0 ? (
           <div style={s.empty}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>🐣</div>
             <p style={{ margin: 0, fontSize: 15, color: '#9ca3af', fontWeight: 600 }}>아직 알림이 없어요</p>
           </div>
         ) : (
@@ -389,19 +211,40 @@ export default function Notifications() {
               </div>
 
               {/* 비주얼 */}
-              <div style={s.visual}>
-                {artSrc && (
+              {artSrc ? (
+                <div style={s.visual}>
                   <div style={s.artThumb}>
                     <img src={artSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
-                )}
-                <div style={{ ...s.profileThumb, border: `3px solid ${meta.color}` }}>
-                  {src
-                    ? <img src={src} alt={selected.actorNickname} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : <span style={{ fontSize: 20, fontWeight: 800, color: meta.color }}>{selected.actorNickname.charAt(0).toUpperCase()}</span>
-                  }
+                  <div style={{ ...s.profileThumb, border: `3px solid ${meta.color}` }}>
+                    {src
+                      ? <img src={src} alt={selected.actorNickname} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : <span style={{ fontSize: 20, fontWeight: 800, color: meta.color }}>{selected.actorNickname.charAt(0).toUpperCase()}</span>
+                    }
+                  </div>
                 </div>
-              </div>
+              ) : selected.type === 'FOLLOW' ? (
+                <div style={s.visualCenter}>
+                  <div style={{ ...s.visualBigAvatar, border: `3px solid ${meta.color}`, background: meta.bg }}>
+                    {src
+                      ? <img src={src} alt={selected.actorNickname} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                      : <span style={{ fontSize: 32, fontWeight: 900, color: meta.color }}>{selected.actorNickname.charAt(0).toUpperCase()}</span>
+                    }
+                  </div>
+                  <div style={{ ...s.visualIconBadge, background: meta.color }}>
+                    {meta.icon}
+                  </div>
+                </div>
+              ) : (
+                <div style={s.visualCenter}>
+                  <div style={{ ...s.visualIconBox, background: meta.bg }}>
+                    <MessageCircle size={36} color={meta.color} strokeWidth={2} />
+                  </div>
+                  <div style={{ ...s.visualIconBadge, background: meta.color }}>
+                    {meta.icon}
+                  </div>
+                </div>
+              )}
 
               {/* 메시지 */}
               <h3 style={s.modalTitle}>
@@ -427,7 +270,7 @@ export default function Notifications() {
                   <button onClick={goToDetail} style={s.modalPrimaryBtn}>프로필 보러 가기</button>
                 )}
                 {selected.type === 'INQUIRY_REPLY' && (
-                  <button onClick={() => { navigate('/contact'); setSelected(null); setSelectedArtImageUrl(null); }} style={s.modalPrimaryBtn}>문의 내역 확인하기</button>
+                  <button onClick={() => { navigate('/myinquiries'); setSelected(null); setSelectedArtImageUrl(null); }} style={s.modalPrimaryBtn}>문의 내역 확인하기</button>
                 )}
                 {selected.type !== 'INQUIRY_REPLY' && (
                   <button onClick={goToProfile} style={s.modalSecondaryBtn}>
@@ -570,6 +413,27 @@ const s: Record<string, React.CSSProperties> = {
     overflow: 'hidden', background: 'rgba(107,130,160,0.1)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+  },
+  visualCenter: {
+    position: 'relative', display: 'flex', justifyContent: 'center',
+    alignItems: 'center', height: 160, marginBottom: 24,
+  },
+  visualBigAvatar: {
+    width: 96, height: 96, borderRadius: '50%',
+    overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    boxShadow: '0 8px 28px rgba(0,0,0,0.12)',
+  },
+  visualIconBox: {
+    width: 96, height: 96, borderRadius: 24,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    boxShadow: '0 8px 28px rgba(0,0,0,0.08)',
+  },
+  visualIconBadge: {
+    position: 'absolute', bottom: 20, right: 'calc(50% - 58px)',
+    width: 28, height: 28, borderRadius: '50%',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    boxShadow: '0 3px 8px rgba(0,0,0,0.18)',
+    color: '#fff',
   },
   modalTitle: { fontSize: 18, fontWeight: 800, color: '#3d3d5c', margin: '0 0 8px' },
   modalDesc: { fontSize: 14, color: '#8a94a8', margin: '0 0 8px', lineHeight: 1.6 },

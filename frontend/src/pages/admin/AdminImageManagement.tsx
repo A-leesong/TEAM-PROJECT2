@@ -1,244 +1,305 @@
 import { useState, useEffect, useCallback } from 'react';
+import { RefreshCw, Image, Heart, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import type { MainBannerResponse, AdminArtworkResponse } from '../../api/adminApi';
-import { getAdminMainImages, getArtworks, assignMainImage } from '../../api/adminApi';
+import { getAdminMainImages, getArtworks, assignMainImage, clearMainImageSlot } from '../../api/adminApi';
 
-interface BannerSlot extends MainBannerResponse {
-    isPlaceholder?: boolean;
-}
+interface BannerSlot extends MainBannerResponse { isPlaceholder?: boolean; }
 
-/**
- * 🎞️ 배너 큐레이션 관리 (v5.0 - 시스템 고도화)
- * - 동적 슬롯 대응 및 전역 스타일 오염 방지
- * - 상세 에러 핸들링 및 할당 피드백 강화
- */
+const ART_PAGE_SIZE = 21;
+
 const AdminImageManagement = () => {
     const [slots, setSlots] = useState<BannerSlot[]>([]);
     const [artworks, setArtworks] = useState<AdminArtworkResponse[]>([]);
+    const [artTotal, setArtTotal] = useState(0);
+    const [artPage, setArtPage] = useState(0);
+    const [artLoading, setArtLoading] = useState(false);
     const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [assigning, setAssigning] = useState(false);
+    const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-    const fetchData = useCallback(async () => {
+    const fetchBanners = useCallback(async () => {
         try {
-            setError(null);
-            // 초기 로딩 시에만 전역 로딩 표시
-            if (slots.length === 0) setIsLoading(true);
-            
-            const [bannerData, artworkData] = await Promise.all([
-                getAdminMainImages(),
-                getArtworks(0, 50) 
-            ]);
-
-            // 최소 6개 슬롯은 보장하되, 데이터가 더 있으면 그만큼 생성
-            const minSlots = 6;
-            const finalSlotCount = Math.max(minSlots, ...bannerData.map(b => b.slotNumber + 1));
-            
-            const updatedSlots: BannerSlot[] = Array.from({ length: finalSlotCount }, (_, i) => ({
-                slotNumber: i,
-                artworkId: '',
-                artworkTitle: '',
-                imageUrl: '',
-                isPlaceholder: true
+            const bannerData = await getAdminMainImages();
+            const minSlots = 10;
+            const count = Math.max(minSlots, ...bannerData.map(b => b.slotNumber + 1));
+            const updated: BannerSlot[] = Array.from({ length: count }, (_, i) => ({
+                slotNumber: i, artworkId: '', artworkTitle: '', imageUrl: '', isPlaceholder: true
             }));
+            bannerData.forEach(b => { if (b.slotNumber < count) updated[b.slotNumber] = { ...b, isPlaceholder: false }; });
+            setSlots(updated);
+        } catch (e) { console.error(e); }
+    }, []);
 
-            bannerData.forEach((b) => {
-                if (b.slotNumber < finalSlotCount) {
-                    updatedSlots[b.slotNumber] = { ...b, isPlaceholder: false };
-                }
-            });
-
-            setSlots(updatedSlots);
-            setArtworks(artworkData.content || []);
-        } catch (err) {
-            console.error("Data fetch error:", err);
-            setError("데이터를 불러오는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
-        } finally {
-            setIsLoading(false);
-        }
-    }, [slots.length]);
+    const fetchArtworks = useCallback(async (page: number) => {
+        setArtLoading(true);
+        try {
+            const data = await getArtworks(page, ART_PAGE_SIZE);
+            setArtworks(data.content || []);
+            setArtTotal(data.totalElements || 0);
+        } catch (e) { console.error(e); }
+        finally { setArtLoading(false); }
+    }, []);
 
     useEffect(() => {
-        void fetchData();
-    }, [fetchData]);
+        const init = async () => {
+            await Promise.all([fetchBanners(), fetchArtworks(0)]);
+            setIsLoading(false);
+        };
+        void init();
+    }, [fetchBanners, fetchArtworks]);
+
+    useEffect(() => {
+        if (!isLoading) void fetchArtworks(artPage);
+    }, [artPage, fetchArtworks, isLoading]);
 
     const handleAssign = async (artworkId: string) => {
         if (selectedSlot === null || assigning) return;
         try {
             setAssigning(true);
             await assignMainImage(artworkId, selectedSlot);
-            await fetchData(); 
+            await fetchBanners();
+            setSuccessMsg(`슬롯 ${selectedSlot + 1} 반영 완료`);
+            setTimeout(() => setSuccessMsg(null), 2500);
             setSelectedSlot(null);
-            setTimeout(() => alert(`슬롯 #${selectedSlot + 1}에 성공적으로 반영되었습니다. ✨`), 100);
-        } catch (err) {
-            alert("할당 중 오류가 발생했습니다. 다시 시도해주세요.");
-        } finally {
-            setAssigning(false);
-        }
+        } catch { alert('할당 중 오류가 발생했습니다.'); }
+        finally { setAssigning(false); }
     };
 
-    if (isLoading) return <div style={s.loadingBox}>배너 관리 시스템 준비 중... 🎞️</div>;
-    
-    if (error) return (
-        <div style={s.errorBox}>
-            <div style={s.errorIcon}>⚠️</div>
-            <p style={s.errorMsg}>{error}</p>
-            <button onClick={() => void fetchData()} style={s.retryBtn}>다시 시도</button>
+    const totalArtPages = Math.ceil(artTotal / ART_PAGE_SIZE);
+
+    if (isLoading) return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300, color: '#94a3b8', fontSize: 14, fontWeight: 600 }}>
+            불러오는 중...
         </div>
     );
 
     return (
-        <div style={s.pageContainer}>
-            <div style={s.pageWrapper}>
-                <header style={s.header}>
+        <div>
+            <style>{`
+                @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+                .slot-card { transition: all 0.2s ease; }
+                .slot-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08) !important; }
+                .clear-btn:hover { background: #fee2e2 !important; color: #ef4444 !important; }
+                .art-card { transition: all 0.2s ease; }
+                .art-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,0.1) !important; }
+                .art-card:hover .art-overlay { opacity: 1 !important; }
+                .bm-page-btn:hover:not(:disabled) { background: #f1f5f9 !important; }
+            `}</style>
+
+            {/* 성공 토스트 */}
+            {successMsg && (
+                <div style={s.toast}>{successMsg}</div>
+            )}
+
+            {/* Step 1 - 슬롯 선택 */}
+            <div style={s.section}>
+                <div style={s.sectionHead}>
                     <div>
-                        <h1 style={s.pageTitle}>배너 진열 관리</h1>
-                        <p style={s.pageSubtitle}>홈페이지 메인 배너의 슬롯(Slot)별 전시 작품을 관리합니다.</p>
+                        <p style={s.step}>STEP 01</p>
+                        <p style={s.sectionTitle}>편집할 슬롯 선택</p>
                     </div>
-                    <div style={s.statusBadge}>시스템 안정화 모드 v5.0</div>
-                </header>
+                    <button style={s.refreshBtn} onClick={() => void fetchBanners()}>
+                        <RefreshCw size={13} />
+                        <span>새로고침</span>
+                    </button>
+                </div>
 
-                <section style={s.gridSection}>
-                    <div style={s.secHeader}>
-                        <h2 style={s.secTitle}>Step 01. 편집할 슬롯 선택</h2>
-                        <p style={s.secDesc}>현재 전시 중인 슬롯입니다. 수정을 원하는 슬롯 카드를 클릭하세요.</p>
-                    </div>
-
-                    <div style={s.slotGrid}>
-                        {slots.map((slot) => {
-                            const isSelected = selectedSlot === slot.slotNumber;
-                            return (
-                                <div 
-                                    key={`slot-${slot.slotNumber}`}
-                                    onClick={() => setSelectedSlot(slot.slotNumber)}
-                                    style={{
-                                        ...s.slotCard,
-                                        border: isSelected ? '3px solid #6366F1' : '1px solid #E2E8F0',
-                                        transform: isSelected ? 'scale(1.02)' : 'scale(1)',
-                                        boxShadow: isSelected ? '0 20px 40px rgba(99, 102, 241, 0.1)' : '0 4px 6px rgba(0,0,0,0.02)'
-                                    }}
-                                >
-                                    <div style={s.slotHeader}>
-                                        <span style={s.slotNumBadge}>슬롯 {slot.slotNumber + 1}</span>
-                                        {isSelected && <span style={s.editingBadge}>편집 중</span>}
-                                    </div>
-                                    <div style={s.slotPreview}>
-                                        {slot.imageUrl ? (
-                                            <img src={slot.imageUrl} alt="" style={s.fullImg} />
-                                        ) : (
-                                            <div style={s.emptyPlaceholder}>비어 있음</div>
+                <div style={s.slotGrid}>
+                    {slots.map(slot => {
+                        const isSelected = selectedSlot === slot.slotNumber;
+                        return (
+                            <div key={slot.slotNumber} className="slot-card"
+                                onClick={() => setSelectedSlot(isSelected ? null : slot.slotNumber)}
+                                style={{
+                                    ...s.slotCard,
+                                    border: isSelected ? '2px solid #6366f1' : '1px solid #f1f5f9',
+                                    boxShadow: isSelected ? '0 0 0 4px rgba(99,102,241,0.12)' : '0 2px 12px rgba(0,0,0,0.05)',
+                                }}>
+                                <div style={s.slotTop}>
+                                    <span style={s.slotNum}>슬롯 {slot.slotNumber + 1}</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        {isSelected && <span style={s.editBadge}>편집 중</span>}
+                                        {!isSelected && slot.artworkId && <span style={s.activeBadge}>노출 중</span>}
+                                        {slot.artworkId && (
+                                            <button
+                                                className="clear-btn"
+                                                style={s.clearBtn}
+                                                title="슬롯 비우기"
+                                                onClick={e => {
+                                                    e.stopPropagation();
+                                                    void clearMainImageSlot(slot.slotNumber).then(fetchBanners);
+                                                }}>
+                                                <X size={10} />
+                                            </button>
                                         )}
                                     </div>
-                                    <div style={s.slotInfo}>
-                                        <h3 style={s.slotTitle}>{slot.artworkTitle || "등록된 작품 없음"}</h3>
-                                        <p style={s.slotStatus}>{slot.artworkId ? "현재 노출 중" : "전시할 이미지를 아래에서 선택"}</p>
-                                    </div>
                                 </div>
-                            );
-                        })}
-                    </div>
-                </section>
-
-                <section style={s.librarySection}>
-                    {assigning && (
-                        <div style={s.assigningOverlay}>
-                            <div style={s.spinner}>🔄</div>
-                            <p>슬롯에 반영하는 중...</p>
-                        </div>
-                    )}
-                    <div style={s.secHeader}>
-                        <h2 style={s.secTitle}>Step 02. 작품 선택</h2>
-                        <p style={s.secDesc}>선택한 슬롯에 바로 전시할 작품을 라이브러리에서 골라주세요.</p>
-                    </div>
-
-                    <div style={s.libraryGrid}>
-                        {artworks.map((art) => (
-                            <div 
-                                key={art.id} 
-                                style={{
-                                    ...s.artCard,
-                                    opacity: assigning ? 0.6 : 1,
-                                    pointerEvents: assigning ? 'none' : 'auto'
-                                }} 
-                                onClick={() => handleAssign(art.id)}
-                            >
-                                <div style={s.artImgBox}>
-                                    <img src={art.imageUrl} alt="" style={s.fullImg} />
-                                    <div style={s.artOverlay}>
-                                        <div style={s.applyBtn}>{selectedSlot !== null ? `슬롯 ${selectedSlot + 1}에 반영` : '슬롯 먼저 선택'} ⚡</div>
-                                    </div>
+                                <div style={s.slotImg}>
+                                    {slot.imageUrl
+                                        ? <img src={slot.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        : <div style={s.emptySlot}><Image size={20} color="#cbd5e1" /><span style={{ fontSize: 11, color: '#cbd5e1', marginTop: 6 }}>비어 있음</span></div>
+                                    }
                                 </div>
-                                <div style={s.artInfo}>
-                                    <span style={s.artTitle}>{art.title}</span>
-                                    <span style={s.artUser}>@{art.nickname}</span>
+                                <p style={s.slotTitle}>{slot.artworkTitle || '등록된 작품 없음'}</p>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Step 2 - 작품 선택 */}
+            <div style={s.section}>
+                <div style={s.sectionHead}>
+                    <div>
+                        <p style={s.step}>STEP 02</p>
+                        <p style={s.sectionTitle}>
+                            {selectedSlot !== null ? `슬롯 ${selectedSlot + 1}에 반영할 작품 선택` : '슬롯을 먼저 선택하세요'}
+                        </p>
+                    </div>
+                    <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>총 {artTotal}개 · 좋아요 순</span>
+                </div>
+
+                <div style={{ ...s.artGrid, opacity: (assigning || artLoading) ? 0.6 : 1, transition: 'opacity 0.2s' }}>
+                    {artworks.map(art => (
+                        <div key={art.id} className="art-card"
+                            style={{ ...s.artCard, cursor: selectedSlot !== null ? 'pointer' : 'default' }}
+                            onClick={() => selectedSlot !== null && void handleAssign(art.id)}>
+                            <div style={s.artImgWrap}>
+                                <img src={art.imageUrl} alt={art.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <div className="art-overlay" style={s.artOverlay}>
+                                    <span style={s.applyLabel}>
+                                        {selectedSlot !== null ? `슬롯 ${selectedSlot + 1}에 반영` : '슬롯 먼저 선택'}
+                                    </span>
+                                </div>
+                                <div style={s.likeBadge}>
+                                    <Heart size={10} style={{ fill: '#fff', color: '#fff' }} />
+                                    <span>{art.likeCount ?? 0}</span>
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                </section>
+                            <div style={s.artInfo}>
+                                <p style={s.artTitle}>{art.title || '제목 없음'}</p>
+                                <p style={s.artNick}>@{art.nickname}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
 
-                <style>{`
-                    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-                    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-                `}</style>
+                {/* 페이지네이션 */}
+                {totalArtPages > 1 && (
+                    <div style={s.pagination}>
+                        <button className="bm-page-btn" style={s.pageBtn}
+                            onClick={() => setArtPage(p => Math.max(0, p - 1))}
+                            disabled={artPage === 0}>
+                            <ChevronLeft size={15} />
+                        </button>
+                        {Array.from({ length: totalArtPages }, (_, i) => i)
+                            .slice(Math.max(0, artPage - 2), Math.min(totalArtPages, artPage + 3))
+                            .map(i => (
+                                <button key={i} className="bm-page-btn"
+                                    style={{ ...s.pageBtn, ...(i === artPage ? s.pageActive : {}) }}
+                                    onClick={() => setArtPage(i)}>
+                                    {i + 1}
+                                </button>
+                            ))}
+                        <button className="bm-page-btn" style={s.pageBtn}
+                            onClick={() => setArtPage(p => Math.min(totalArtPages - 1, p + 1))}
+                            disabled={artPage === totalArtPages - 1}>
+                            <ChevronRight size={15} />
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
 };
 
 const s: Record<string, React.CSSProperties> = {
-    pageContainer: {
-        backgroundColor: '#F8FAFC', minHeight: '100vh', width: '100%'
+    toast: {
+        position: 'fixed', bottom: 32, right: 32, zIndex: 999,
+        background: '#1e293b', color: '#fff', fontSize: 13, fontWeight: 700,
+        padding: '12px 20px', borderRadius: 12,
+        boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
     },
-    pageWrapper: { 
-        backgroundColor: 'transparent', padding: '10px 0 60px 0', color: '#1E293B',
-        fontFamily: "'Inter', 'Pretendard', sans-serif", animation: 'fadeIn 0.4s ease-out'
+    section: {
+        background: '#fff', borderRadius: 20, padding: '28px',
+        border: '1px solid #f1f5f9', boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
+        marginBottom: 20,
     },
-    loadingBox: { height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 700, color: '#94A3B8', backgroundColor: '#F8FAFC' },
-    errorBox: { height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', gap: '20px' },
-    errorIcon: { fontSize: '48px' },
-    errorMsg: { fontSize: '16px', fontWeight: 600, color: '#EF4444' },
-    retryBtn: { padding: '10px 24px', backgroundColor: '#6366F1', color: '#FFF', borderRadius: '10px', border: 'none', fontWeight: 800, cursor: 'pointer' },
-    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '60px' },
-    pageTitle: { fontSize: '38px', fontWeight: 900, letterSpacing: '-1.5px', margin: 0, color: '#0F172A' },
-    pageSubtitle: { fontSize: '15px', color: '#64748B', marginTop: '8px', fontWeight: 500 },
-    statusBadge: { 
-        padding: '8px 18px', borderRadius: '40px', border: '1px solid #E2E8F0', 
-        fontSize: '11px', fontWeight: 900, letterSpacing: '1px', color: '#6366F1', backgroundColor: '#F5F3FF'
+    sectionHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 24 },
+    step: { margin: '0 0 4px', fontSize: 10, fontWeight: 900, color: '#6366f1', letterSpacing: 2 },
+    sectionTitle: { margin: 0, fontSize: 16, fontWeight: 800, color: '#1e293b' },
+    refreshBtn: {
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '8px 14px', background: '#f8fafc', border: '1px solid #e2e8f0',
+        borderRadius: 10, fontSize: 12, fontWeight: 600, color: '#374151', cursor: 'pointer',
     },
-    gridSection: { marginBottom: '80px' },
-    secHeader: { marginBottom: '32px' },
-    secTitle: { fontSize: '22px', fontWeight: 800, margin: '0 0 8px 0', color: '#1E293B' },
-    secDesc: { fontSize: '14px', color: '#64748B', margin: 0 },
-    slotGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' },
-    slotCard: { 
-        borderRadius: '24px', padding: '24px', cursor: 'pointer', backgroundColor: '#FFFFFF',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', display: 'flex', flexDirection: 'column', gap: '16px'
+
+    slotGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 },
+    slotCard: {
+        borderRadius: 16, padding: 16, cursor: 'pointer',
+        background: '#fff', display: 'flex', flexDirection: 'column', gap: 10,
     },
-    slotHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-    slotNumBadge: { fontSize: '11px', fontWeight: 900, color: '#94A3B8', letterSpacing: '1px' },
-    editingBadge: { backgroundColor: '#6366F1', color: '#FFF', padding: '4px 10px', borderRadius: '8px', fontSize: '10px', fontWeight: 900 },
-    slotPreview: { height: '190px', borderRadius: '16px', backgroundColor: '#F1F5F9', overflow: 'hidden', border: '1px solid #E2E8F0' },
-    fullImg: { width: '100%', height: '100%', objectFit: 'cover' },
-    emptyPlaceholder: { height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 900, color: '#CBD5E1', letterSpacing: '2px' },
-    slotInfo: { padding: '0 4px' },
-    slotTitle: { fontSize: '17px', fontWeight: 800, color: '#1E293B', margin: '0 0 4px 0' },
-    slotStatus: { fontSize: '13px', color: '#94A3B8', margin: 0 },
-    librarySection: { position: 'relative', backgroundColor: '#FFFFFF', padding: '60px', borderRadius: '40px', boxShadow: '0 10px 30px rgba(0,0,0,0.03)', border: '1px solid #F1F5F9' },
-    assigningOverlay: {
-        position: 'absolute', inset: 0, backgroundColor: 'rgba(255, 255, 255, 0.8)', zIndex: 10,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        borderRadius: '40px', fontWeight: 800, color: '#6366F1'
+    slotTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+    slotNum: { fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: 0.5, flex: 1 },
+    clearBtn: {
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        width: 18, height: 18, borderRadius: 4, border: '1px solid #e2e8f0',
+        background: '#f8fafc', color: '#94a3b8', cursor: 'pointer', padding: 0,
+        transition: 'all 0.15s',
     },
-    spinner: { fontSize: '32px', animation: 'spin 1s linear infinite', marginBottom: '10px' },
-    libraryGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '28px' },
-    artCard: { backgroundColor: '#FFFFFF', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', border: '1px solid #F1F5F9', transition: '0.3s', cursor: 'pointer' },
-    artImgBox: { height: '220px', position: 'relative', overflow: 'hidden' },
-    artOverlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(99, 102, 241, 0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: '0.3s' },
-    applyBtn: { color: '#FFF', fontSize: '12px', fontWeight: 900, border: '1.5px solid #FFF', padding: '10px 20px', borderRadius: '10px' },
-    artInfo: { padding: '22px' },
-    artTitle: { display: 'block', fontSize: '15px', fontWeight: 800, color: '#1E293B', marginBottom: '4px' },
-    artUser: { fontSize: '12px', color: '#94A3B8', fontWeight: 600 }
+    editBadge: {
+        fontSize: 10, fontWeight: 800, color: '#fff',
+        background: '#6366f1', padding: '2px 8px', borderRadius: 6,
+    },
+    activeBadge: {
+        fontSize: 10, fontWeight: 800, color: '#10b981',
+        background: '#f0fdf4', padding: '2px 8px', borderRadius: 6,
+    },
+    slotImg: {
+        height: 200, borderRadius: 10, overflow: 'hidden',
+        background: '#f8fafc', border: '1px solid #f1f5f9',
+    },
+    emptySlot: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
+    slotTitle: { margin: 0, fontSize: 12, fontWeight: 700, color: '#475569', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+
+    artGrid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 16 },
+    artCard: {
+        borderRadius: 14, overflow: 'hidden',
+        background: '#fff', border: '1px solid #f1f5f9',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+    },
+    artImgWrap: { height: 160, position: 'relative', overflow: 'hidden', background: '#f1f5f9' },
+    artOverlay: {
+        position: 'absolute', inset: 0,
+        background: 'rgba(99,102,241,0.9)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        opacity: 0, transition: 'opacity 0.2s',
+    },
+    applyLabel: { color: '#fff', fontSize: 12, fontWeight: 800, textAlign: 'center', padding: '0 12px' },
+    likeBadge: {
+        position: 'absolute', bottom: 8, right: 8,
+        display: 'flex', alignItems: 'center', gap: 3,
+        background: 'rgba(0,0,0,0.55)', borderRadius: 20,
+        padding: '3px 7px', fontSize: 10, fontWeight: 700, color: '#fff',
+    },
+    artInfo: { padding: '12px 14px' },
+    artTitle: { margin: '0 0 3px', fontSize: 12, fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+    artNick: { margin: 0, fontSize: 11, color: '#94a3b8', fontWeight: 500 },
+
+    pagination: {
+        display: 'flex', justifyContent: 'center', alignItems: 'center',
+        gap: 6, marginTop: 24,
+    },
+    pageBtn: {
+        width: 34, height: 34, borderRadius: 8, border: '1px solid #e2e8f0',
+        background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600,
+        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'background 0.15s',
+    },
+    pageActive: {
+        background: '#6366f1', color: '#fff', border: '1px solid #6366f1',
+    },
 };
 
 export default AdminImageManagement;

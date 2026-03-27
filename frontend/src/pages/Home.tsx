@@ -5,9 +5,23 @@ import { useAuthStore } from '../stores/useAuthStore'
 import { Pencil, Layers, Ticket, Sparkles, Timer, ArrowRight, MessageCircle, ChevronUp, CalendarCheck } from 'lucide-react'
 import Header from '../components/Header'
 import { exploreArtworks } from '../api/artwork'
+import { getAdminMainImages } from '../api/adminApi'
 import type { ArtworkResponse } from '../types'
 import AttendanceModal, { getAttendDismissKey } from '../components/AttendanceModal'
 import { getTodayAttendance } from '../api/user'
+
+function useCarouselSize() {
+  const [vw, setVw] = useState(window.innerWidth)
+  useEffect(() => {
+    const onResize = () => setVw(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  if (vw < 480)  return { radius: 160, cardW: 130, cardH: 180, height: 280 }
+  if (vw < 640)  return { radius: 210, cardW: 160, cardH: 220, height: 340 }
+  if (vw < 860)  return { radius: 280, cardW: 190, cardH: 260, height: 400 }
+  return              { radius: 380, cardW: 230, cardH: 300, height: 480 }
+}
 
 function ArtworkCarousel() {
   const navigate = useNavigate()
@@ -17,15 +31,19 @@ function ArtworkCarousel() {
   const angleRef = useRef(0)
   const rafRef = useRef<number | undefined>(undefined)
   const pausedRef = useRef(false)
+  const { radius, cardW, cardH, height } = useCarouselSize()
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('admin_main_images')
-      if (saved) {
-        const parsed: (string | null)[] = JSON.parse(saved)
-        setAdminImages(parsed.filter(Boolean) as string[])
-      }
-    } catch {}
+    getAdminMainImages()
+      .then(banners => {
+        const urls = banners
+          .filter(b => b.imageUrl)
+          .sort((a, b) => a.slotNumber - b.slotNumber)
+          .map(b => b.imageUrl)
+          .slice(0, 10)
+        setAdminImages(urls)
+      })
+      .catch(() => {})
 
     exploreArtworks('latest', undefined, 50)
       .then(data => setArtworks(data.filter(a => a.imageUrl).slice(0, 10)))
@@ -54,13 +72,10 @@ function ArtworkCarousel() {
   if (items.length === 0) return null
 
   const n = items.length
-  const radius = 380
-  const cardW = 230
-  const cardH = 300
 
   return (
     <div
-      style={{ position: 'relative', zIndex: 2, width: '100%', height: 480, perspective: '2500px' }}
+      style={{ position: 'relative', zIndex: 2, width: '100%', height, perspective: '2500px' }}
     >
       <div style={{ position: 'absolute', top: '50%', left: '50%', width: 0, height: 0, transformStyle: 'preserve-3d' }}>
         <div ref={ringRef} style={{ transformStyle: 'preserve-3d' }}>

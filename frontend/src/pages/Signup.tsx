@@ -176,6 +176,10 @@ export default function Signup() {
           .signup-left { display: none !important; }
           .signup-right { border-radius: 0 !important; width: 100% !important; padding: 48px 28px !important; }
           .signup-layout { min-height: 100vh !important; }
+          .signup-privacy-table { display: block !important; overflow-x: auto !important; }
+        }
+        @media (max-width: 480px) {
+          .signup-right { padding: 32px 16px !important; }
         }
       `}</style>
 
@@ -322,7 +326,7 @@ export default function Signup() {
 
             {privacyOpen && (
               <div style={s.privacyContent}>
-                <table style={s.table}>
+                <table className="signup-privacy-table" style={s.table}>
                   <thead>
                     <tr>
                       <th style={s.th}>수집 항목</th>

@@ -402,6 +402,7 @@ export default function Header({ hideOnScroll = false }: HeaderProps) {
                   </div>
                   {[
                     { label: '마이페이지', onClick: () => { setShowProfileMenu(false); navigate('/mypage') } },
+                    { label: '나의 문의', onClick: () => { setShowProfileMenu(false); navigate('/myinquiries') } },
                     { label: '출석체크', onClick: () => { setShowProfileMenu(false); setShowAttendanceModal(true) } },
                     { label: '알림', onClick: () => { setShowProfileMenu(false); navigate('/notifications') } },
                     ...(role === 'ADMIN' ? [{ label: '관리자 페이지', onClick: () => { setShowProfileMenu(false); navigate('/admin') } }] : []),

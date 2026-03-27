@@ -11,6 +11,9 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, String> {
     Optional<User> findByEmail(String email);
     Optional<User> findByNickname(String nickname);
+
+    @Query("SELECT u FROM User u WHERE u.nickname LIKE %:keyword% OR u.email LIKE %:keyword%")
+    List<User> searchByKeyword(@Param("keyword") String keyword);
     boolean existsByEmail(String email);
     boolean existsByNickname(String nickname);
 
@@ -20,6 +23,10 @@ public interface UserRepository extends JpaRepository<User, String> {
 
     // 📊 오늘 가입자 수 조회 (정상 작동)
     long countByCreatedAtAfter(LocalDateTime date);
+
+    // 📈 날짜별 신규 가입자 수 (최근 N일)
+    @Query(value = "SELECT DATE(created_at) as date, COUNT(*) as count FROM users WHERE created_at >= :since GROUP BY DATE(created_at) ORDER BY DATE(created_at)", nativeQuery = true)
+    List<Object[]> countByDateSince(@Param("since") LocalDateTime since);
 
     // 🚫 [수정] status 대신 isSuspended 필드를 사용하도록 변경
     long countByIsSuspended(Boolean isSuspended);

@@ -1,15 +1,20 @@
 package com.egag.admin;
 
 import com.egag.admin.dto.*;
+import com.egag.auth.PrincipalDetails;
 import com.egag.common.domain.ArtworkRepository;
+import com.egag.common.domain.User;
 import com.egag.common.domain.UserRepository;
 import com.egag.inquiry.InquiryRepository;
+import com.egag.payment.PaymentRepository;
 import lombok.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -23,6 +28,7 @@ public class AdminController {
     private final UserRepository userRepository;
     private final InquiryRepository inquiryRepository;
     private final ArtworkRepository artworkRepository;
+    private final PaymentRepository paymentRepository;
 
     @GetMapping("/dashboard/stats")
     public ResponseEntity<AdminDashboardStatsResponse> getDashboardStats() {
@@ -42,14 +48,36 @@ public class AdminController {
 
     @GetMapping("/users/all")
     public ResponseEntity<List<?>> getAllUsers() {
-        return ResponseEntity.ok(userRepository.findAll());
+        return ResponseEntity.ok(
+            userRepository.findAll().stream().map(u -> {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("id", u.getId());
+                m.put("nickname", u.getNickname());
+                m.put("email", u.getEmail());
+                m.put("role", u.getRole());
+                m.put("tokenBalance", u.getTokenBalance());
+                m.put("isActive", u.getIsSuspended() == null || !u.getIsSuspended());
+                m.put("createdAt", u.getCreatedAt());
+                return m;
+            }).collect(Collectors.toList())
+        );
     }
 
-    @GetMapping("/users/search") 
-    public ResponseEntity<List<?>> searchUser(@RequestParam String keyword) { 
-        Optional<?> user = userRepository.findByNickname(keyword)
-                .or(() -> userRepository.findByEmail(keyword));
-        return ResponseEntity.ok(user.map(List::of).orElse(List.of()));
+    @GetMapping("/users/search")
+    public ResponseEntity<List<?>> searchUser(@RequestParam String keyword) {
+        return ResponseEntity.ok(
+            userRepository.searchByKeyword(keyword).stream().map(u -> {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("id", u.getId());
+                m.put("nickname", u.getNickname());
+                m.put("email", u.getEmail());
+                m.put("role", u.getRole());
+                m.put("tokenBalance", u.getTokenBalance());
+                m.put("isActive", u.getIsSuspended() == null || !u.getIsSuspended());
+                m.put("createdAt", u.getCreatedAt());
+                return m;
+            }).collect(Collectors.toList())
+        );
     }
 
     @PatchMapping("/users/{userId}/status")
@@ -73,8 +101,22 @@ public class AdminController {
     @GetMapping("/payments")
     public ResponseEntity<Page<com.egag.admin.dto.AdminPaymentResponse>> getAdminPayments(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
             @PageableDefault(size = 10) Pageable pageable) {
-        return ResponseEntity.ok(adminService.getAdminPayments(keyword, pageable));
+        LocalDateTime fromDt = (from != null && !from.isBlank()) ? LocalDate.parse(from).atStartOfDay() : null;
+        LocalDateTime toDt = (to != null && !to.isBlank()) ? LocalDate.parse(to).atTime(23, 59, 59) : null;
+        return ResponseEntity.ok(adminService.getAdminPayments(keyword, fromDt, toDt, pageable));
+    }
+
+    @GetMapping("/payments/stats")
+    public ResponseEntity<java.util.Map<String, Long>> getPaymentStats(
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to) {
+        LocalDateTime fromDt = (from != null && !from.isBlank()) ? LocalDate.parse(from).atStartOfDay() : null;
+        LocalDateTime toDt = (to != null && !to.isBlank()) ? LocalDate.parse(to).atTime(23, 59, 59) : null;
+        long sum = (fromDt != null && toDt != null) ? adminService.sumPaymentsBetween(fromDt, toDt) : 0L;
+        return ResponseEntity.ok(java.util.Map.of("total", sum));
     }
 
     @PostMapping("/payments/{id}/cancel")
@@ -87,6 +129,32 @@ public class AdminController {
         List<Object[]> rows = inquiryRepository.countByCategory();
         Map<String, Long> result = rows.stream()
                 .collect(Collectors.toMap(r -> (String) r[0], r -> (Long) r[1]));
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/stats/user-by-date")
+    public ResponseEntity<List<Map<String, Object>>> getUserByDate() {
+        LocalDateTime since = LocalDateTime.now().minusDays(14).withHour(0).withMinute(0).withSecond(0).withNano(0);
+        List<Object[]> rows = userRepository.countByDateSince(since);
+        List<Map<String, Object>> result = rows.stream().map(r -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("date", r[0].toString());
+            m.put("count", ((Number) r[1]).longValue());
+            return m;
+        }).collect(Collectors.toList());
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/stats/revenue-by-date")
+    public ResponseEntity<List<Map<String, Object>>> getRevenueByDate() {
+        LocalDateTime since = LocalDateTime.now().minusDays(14).withHour(0).withMinute(0).withSecond(0).withNano(0);
+        List<Object[]> rows = paymentRepository.sumAmountByDateSince(since);
+        List<Map<String, Object>> result = rows.stream().map(r -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("date", r[0].toString());
+            m.put("amount", r[1] != null ? ((Number) r[1]).longValue() : 0L);
+            return m;
+        }).collect(Collectors.toList());
         return ResponseEntity.ok(result);
     }
 
@@ -111,6 +179,21 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getAdminReports(status, keyword, pageable));
     }
 
+    @PatchMapping("/reports/{id}/resolve")
+    public ResponseEntity<String> resolveReport(
+            @PathVariable String id,
+            @AuthenticationPrincipal PrincipalDetails principal) {
+        User admin = principal.getUser();
+        adminService.resolveReport(id, admin);
+        return ResponseEntity.ok("신고가 처리완료 상태로 변경되었습니다.");
+    }
+
+    @DeleteMapping("/artworks/{id}")
+    public ResponseEntity<String> deleteArtwork(@PathVariable String id) {
+        adminService.deleteArtwork(id);
+        return ResponseEntity.ok("작품이 삭제되었습니다.");
+    }
+
     @PatchMapping("/artworks/{id}/visibility")
     public ResponseEntity<String> toggleArtworkVisibility(@PathVariable String id) {
         adminService.toggleArtworkVisibility(id);
@@ -120,6 +203,12 @@ public class AdminController {
     @GetMapping("/main-images")
     public ResponseEntity<List<MainBannerResponse>> getMainImages() {
         return ResponseEntity.ok(adminService.getMainImages());
+    }
+
+    @DeleteMapping("/main-images/{slotNumber}")
+    public ResponseEntity<String> clearMainImageSlot(@PathVariable Integer slotNumber) {
+        adminService.clearMainImageSlot(slotNumber);
+        return ResponseEntity.ok("슬롯이 초기화되었습니다.");
     }
 
     @PostMapping("/main-images/assign")

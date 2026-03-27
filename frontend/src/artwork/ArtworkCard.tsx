@@ -6,9 +6,10 @@ interface ArtworkCardProps {
   artwork: ArtworkResponse
   onLike?: (id: string) => void
   variant?: 'default' | 'polaroid'
+  showPrivateBadge?: boolean
 }
 
-const ArtworkCard = ({ artwork, onLike, variant = 'default' }: ArtworkCardProps) => {
+const ArtworkCard = ({ artwork, onLike, variant = 'default', showPrivateBadge = true }: ArtworkCardProps) => {
   return (
     <Link to={`/artwork/${artwork.id}`} className={`artwork-card ${variant}`}>
       <div className="artwork-image">
@@ -20,7 +21,7 @@ const ArtworkCard = ({ artwork, onLike, variant = 'default' }: ArtworkCardProps)
         ) : (
           <div className="avatar-placeholder">🎨</div>
         )}
-        {!artwork.isPublic && <div className="private-badge">나만 보기</div>}
+        {showPrivateBadge && !artwork.isPublic && <div className="private-badge">나만 보기</div>}
       </div>
       <div className="artwork-meta">
         <h3 className="artwork-title">{artwork.title || artwork.topic || '제목 없음'}</h3>

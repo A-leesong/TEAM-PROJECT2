@@ -12,6 +12,7 @@ export interface AdminDashboardStats {
     totalUsers: number;
     activeArtworks: number;
     pendingInquiries: number;
+    totalSales: number;
     todaySales: number;
     topArtworks: ArtworkStat[];
 }
@@ -42,6 +43,7 @@ export interface AdminArtworkResponse {
     nickname: string;
     createdAt: string;
     isVisible: boolean;
+    likeCount: number;
 }
 
 /**
@@ -72,6 +74,30 @@ export const getAdminWeeklyStats = async (): Promise<WeeklyStat[]> => {
     return res.data.map((item: { count: number }) => ({
         ...item,
         value: item.count
+    }));
+};
+
+/**
+ * 👥 날짜별 신규 가입자 수 (사용자 증가 추이 차트)
+ */
+export const getAdminUserByDate = async (): Promise<WeeklyStat[]> => {
+    const res = await client.get('/admin/stats/user-by-date');
+    return res.data.map((item: { date: string; count: number }) => ({
+        date: item.date,
+        count: item.count,
+        value: item.count,
+    }));
+};
+
+/**
+ * 💰 날짜별 수익 집계 (수익 추이 차트)
+ */
+export const getAdminRevenueByDate = async (): Promise<WeeklyStat[]> => {
+    const res = await client.get('/admin/stats/revenue-by-date');
+    return res.data.map((item: { date: string; amount: number }) => ({
+        date: item.date,
+        count: item.amount,
+        value: item.amount,
     }));
 };
 
@@ -131,13 +157,18 @@ export const assignMainImage = async (artworkId: string, slotNumber: number) => 
     return res.data;
 };
 
+export const clearMainImageSlot = async (slotNumber: number) => {
+    const res = await client.delete(`/admin/main-images/${slotNumber}`);
+    return res.data;
+};
+
 /**
  * 💬 전체 문의 내역 조회 (페이징 & 검색 추가)
  */
 export const getAdminInquiries = async (page = 0, size = 10, status = 'all', keyword = '') => {
-    const res = await client.get('/admin/inquiries', {
-        params: { page, size, status, keyword }
-    });
+    const params: Record<string, string | number> = { page, size, status };
+    if (keyword.trim()) params.keyword = keyword.trim();
+    const res = await client.get('/admin/inquiries', { params });
     return res.data;
 };
 
@@ -160,6 +191,14 @@ export const getAdminReportedArtworks = async (page = 0, size = 10, status = 'al
 };
 
 /**
+ * ✅ 신고 처리완료
+ */
+export const resolveReport = async (reportId: string) => {
+    const res = await client.patch(`/admin/reports/${reportId}/resolve`);
+    return res.data;
+};
+
+/**
  * 👁️ 작품 노출 상태 토글
  */
 export const toggleArtworkVisibility = async (artworkId: string) => {
@@ -170,10 +209,33 @@ export const toggleArtworkVisibility = async (artworkId: string) => {
 /**
  * 💵 결제 내역 조회 (어드민 - 페이징 & 검색 추가)
  */
-export const getAdminPayments = async (page = 0, size = 10, keyword = '') => {
-    const res = await client.get('/admin/payments', {
-        params: { page, size, keyword }
-    });
+export const getAdminPayments = async (page = 0, size = 10, keyword = '', from = '', to = '') => {
+    const params: Record<string, string | number> = { page, size };
+    if (keyword.trim()) params.keyword = keyword.trim();
+    if (from) params.from = from;
+    if (to) params.to = to;
+    const res = await client.get('/admin/payments', { params });
+    return res.data;
+};
+
+export const getPaymentStats = async (from: string, to: string): Promise<{ total: number }> => {
+    const res = await client.get('/admin/payments/stats', { params: { from, to } });
+    return res.data;
+};
+
+/**
+ * 🗑️ 작품 삭제 (어드민)
+ */
+export const deleteAdminArtwork = async (artworkId: string) => {
+    const res = await client.delete(`/admin/artworks/${artworkId}`);
+    return res.data;
+};
+
+/**
+ * 📋 내 문의 내역 조회
+ */
+export const getMyInquiries = async (): Promise<any[]> => {
+    const res = await client.get('/inquiries/my');
     return res.data;
 };
 

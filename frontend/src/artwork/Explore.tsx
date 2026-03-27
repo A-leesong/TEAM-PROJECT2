@@ -86,12 +86,16 @@ export default function Explore() {
         .slide-card { transition: transform 0.2s, box-shadow 0.2s; text-decoration: none; display: block; }
         .slide-card:hover { transform: translateY(-8px) scale(1.03); box-shadow: 0 12px 40px rgba(107,130,160,0.22) !important; }
         @media (max-width: 640px) {
-          .explore-main { padding-top: 120px !important; }
+          .explore-main { padding-top: 120px !important; padding-left: 0 !important; padding-right: 0 !important; }
           .explore-title { font-size: 26px !important; }
           .explore-top3-card { width: calc(100vw - 48px) !important; max-width: 312px !important; }
+          .explore-slider-track { padding: 8px 20px 24px !important; }
         }
         @media (min-width: 641px) and (max-width: 860px) {
+          .explore-main { padding-top: 140px !important; }
           .explore-title { font-size: 30px !important; }
+          .explore-top3-card { width: calc(33vw - 24px) !important; max-width: 280px !important; }
+          .explore-slider-track { padding: 8px 32px 24px !important; }
         }
       `}</style>
 
@@ -134,7 +138,7 @@ export default function Explore() {
                     transform: `rotate(${((idx % 3) - 1) * 1.5}deg)`,
                     transition: 'transform 0.3s'
                   }}>
-                    <ArtworkCard artwork={artwork} onLike={handleLike} variant="polaroid" />
+                    <ArtworkCard artwork={artwork} onLike={handleLike} variant="polaroid" showPrivateBadge={false} />
                   </div>
                 ))}
               </div>
@@ -150,6 +154,7 @@ export default function Explore() {
               <div style={s.sliderOuter}>
                 <div
                   ref={sliderRef}
+                  className="explore-slider-track"
                   style={s.sliderTrack}
                   onMouseEnter={() => { pausedRef.current = true }}
                   onMouseLeave={() => { pausedRef.current = false }}
@@ -161,7 +166,7 @@ export default function Explore() {
                       transform: `rotate(${(Math.sin(i) * 2).toFixed(1)}deg)`,
                       marginTop: i % 2 === 0 ? '10px' : '-10px'
                     }}>
-                      <ArtworkCard artwork={artwork} onLike={handleLike} variant="polaroid" />
+                      <ArtworkCard artwork={artwork} onLike={handleLike} variant="polaroid" showPrivateBadge={false} />
                     </div>
                   ))}
                 </div>
