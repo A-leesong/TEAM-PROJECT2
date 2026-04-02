@@ -67,14 +67,20 @@ public class CanvasController {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new CustomException(HttpStatus.UNAUTHORIZED, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."));
 
-        if (user.getTokenBalance() < 1) {
+        // 1. DB 원자적 차감 실행 (동시성 방어)
+        int updatedRows = userRepository.decrementTokenBalance(user.getId());
+        
+        if (updatedRows == 0) {
+            // 그 사이 다른 요청이 토큰을 모두 사용한 경우
             throw new CustomException(HttpStatus.BAD_REQUEST, "INSUFFICIENT_TOKEN", "토큰이 부족합니다.");
         }
 
-        user.setTokenBalance(user.getTokenBalance() - 1);
-        userRepository.save(user);
+        // 2. 최신 잔액 조회 (응답용)
+        int newBalance = userRepository.findById(user.getId())
+                .map(User::getTokenBalance)
+                .orElse(0);
 
-        return ResponseEntity.ok(Map.of("tokenBalance", user.getTokenBalance()));
+        return ResponseEntity.ok(Map.of("tokenBalance", newBalance));
     }
 
     @Transactional
@@ -90,25 +96,15 @@ public class CanvasController {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new CustomException(HttpStatus.UNAUTHORIZED, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."));
 
-        // 1. 사전 잔액 체크 (Fast Fail)
-        if (user.getTokenBalance() < 1) {
-            throw new CustomException(HttpStatus.BAD_REQUEST, "INSUFFICIENT_TOKEN", "토큰이 부족합니다.");
-        }
+        // [입장 시 선결제 모델] 진입 시점에 이미 토큰을 차감했으므로, 
+        // 변환 시점에는 별도의 잔액 마이너스 체크를 수행하지 않습니다. 
 
-        // 2. AI 변환 시도 (성공 시에만 토큰 차감)
+        // 2. AI 변환 실행
         TransformResponse result = imageTransformService.transform(
                 request.getCanvasBase64(), request.getStyle(), request.getSubject(), request.getReason());
 
-        // 3. DB 원자적 차감 실행 (동시성 방어)
-        int updatedRows = userRepository.decrementTokenBalance(user.getId());
-        
-        if (updatedRows == 0) {
-            // 그 사이 다른 요청이 토큰을 모두 사용한 경우
-            throw new CustomException(HttpStatus.BAD_REQUEST, "INSUFFICIENT_TOKEN", "토큰이 부족합니다.");
-        }
-
-        // 4. 최신 잔액 조회 (응답용)
-        int newBalance = userRepository.findById(user.getId())
+        // 3. 최신 잔액 조회 (현재 잔액을 그대로 응답에 담아 전달)
+        int currentBalance = userRepository.findById(user.getId())
                 .map(User::getTokenBalance)
                 .orElse(0);
 
@@ -117,7 +113,7 @@ public class CanvasController {
                 .prompt(result.getPrompt())
                 .style(result.getStyle())
                 .story(result.getStory())
-                .tokenBalance(newBalance)
+                .tokenBalance(currentBalance)
                 .build());
 }
 }

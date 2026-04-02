@@ -684,14 +684,12 @@ const [showTop, setShowTop] = useState(false)
               </button>
               <button
                 onClick={async () => {
-                  if (showTokenModal === 'time') {
-                    try {
-                      const res = await consumeToken()
-                      setTokenBalance(res.tokenBalance)
-                    } catch {
-                      alert('토큰이 부족합니다.')
-                      return
-                    }
+                  try {
+                    const res = await consumeToken()
+                    setTokenBalance(res.tokenBalance)
+                  } catch {
+                    alert('토큰이 부족합니다.')
+                    return
                   }
                   setShowTokenModal(null)
                   navigate(showTokenModal === 'deco' ? '/decalcomania' : showTokenModal === 'time' ? '/time-attack' : '/canvas')
