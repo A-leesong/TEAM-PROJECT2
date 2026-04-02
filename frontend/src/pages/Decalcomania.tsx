@@ -26,7 +26,7 @@ interface HistoryEntry { strokes: Stroke[]; fill: HTMLImageElement | null }
 
 // ─── SVG 아이콘 ───────────────────────────────────────────
 const BucketIcon = () => (
-  <svg width="17" height="ㅁ17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M19 11V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h7" />
     <path d="M12 12H4" /><path d="M12 8H4" />
     <circle cx="19.5" cy="19.5" r="2.5" /><path d="M19.5 17v-5" />
