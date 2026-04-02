@@ -104,6 +104,7 @@ export default function Canvas() {
   const [result, setResult] = useState<{ imageUrl: string; style: string; story: string } | null>(null)
   const [savedToGallery, setSavedToGallery] = useState(false)
   const [savingToGallery, setSavingToGallery] = useState(false)
+  const [isFilling, setIsFilling] = useState(false)
 
   // 캔버스 컨테이너 크기 추적
   useEffect(() => {
@@ -291,10 +292,12 @@ export default function Canvas() {
   }
 
   const handleBucketClick = useCallback((_e: KonvaEventObject<PointerEvent>) => {
-    if (!isBucket || !stageRef.current) return
+    if (!isBucket || !stageRef.current || isFilling) return
     const stage = stageRef.current
     const pos = stage.getPointerPosition()
     if (!pos) return
+
+    setIsFilling(true) // 연산 시작 잠금 (프리징 방지)
 
     const dataUrl = stage.toDataURL({ pixelRatio: 1, mimeType: 'image/png' })
     const img = new Image()
@@ -304,30 +307,36 @@ export default function Canvas() {
       offscreen.height = stageSize.height
       const ctx = offscreen.getContext('2d')!
       ctx.drawImage(img, 0, 0)
-      // 경계 1px 검은 테두리로 막아서 플러드필 누출 방지
+      
       const { width: w, height: h } = offscreen
+      // 경계 1px 검은 테두리로 막아서 플러드필 누출 방지
       ctx.fillStyle = '#000000'
       ctx.fillRect(0, 0, w, 1); ctx.fillRect(0, h - 1, w, 1)
       ctx.fillRect(0, 0, 1, h); ctx.fillRect(w - 1, 0, 1, h)
+      
       floodFill(offscreen, Math.floor(pos.x), Math.floor(pos.y), color)
-      // 테두리 제거
-      ctx.fillStyle = '#ffffff'
-      ctx.fillRect(0, 0, w, 1); ctx.fillRect(0, h - 1, w, 1)
-      ctx.fillRect(0, 0, 1, h); ctx.fillRect(w - 1, 0, 1, h)
+      
+      // 테두리 복원 (화이트아웃 방지를 위해 흰색 대신 투명/배경색으로 복원하거나 클리어)
+      ctx.clearRect(0, 0, w, 1); ctx.clearRect(0, h - 1, w, 1)
+      ctx.clearRect(0, 0, 1, h); ctx.clearRect(w - 1, 0, 1, h)
 
       const resultImg = new Image()
       resultImg.onload = () => {
         setHistory((prev) => {
+          // 최신 history 가용성을 보장하기 위해 slice 시점에 주의
           const next = prev.slice(0, historyIndex + 1)
-          const cur = prev[historyIndex]
-          return [...next, { strokes: cur.strokes, fill: resultImg }]
+          const cur = next[next.length - 1]
+          return [...next, { strokes: cur ? cur.strokes : [], fill: resultImg }]
         })
         setHistoryIndex((i) => i + 1)
+        setIsFilling(false) // 연산 완료 잠금 해제
       }
+      resultImg.onerror = () => setIsFilling(false)
       resultImg.src = offscreen.toDataURL()
     }
+    img.onerror = () => setIsFilling(false)
     img.src = dataUrl
-  }, [isBucket, color, stageSize, historyIndex])
+  }, [isBucket, color, stageSize, historyIndex, isFilling])
 
   const handleReset = () => {
     setHistory([{ strokes: [], fill: null }])

@@ -31,19 +31,23 @@ public interface UserRepository extends JpaRepository<User, String> {
     // 🚫 [수정] status 대신 isSuspended 필드를 사용하도록 변경
     long countByIsSuspended(Boolean isSuspended);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE User u SET u.followerCount = u.followerCount + 1 WHERE u.id = :id")
     void incrementFollowerCount(@Param("id") String id);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE User u SET u.followerCount = CASE WHEN u.followerCount > 0 THEN u.followerCount - 1 ELSE 0 END WHERE u.id = :id")
     void decrementFollowerCount(@Param("id") String id);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE User u SET u.followingCount = u.followingCount + 1 WHERE u.id = :id")
     void incrementFollowingCount(@Param("id") String id);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE User u SET u.followingCount = CASE WHEN u.followingCount > 0 THEN u.followingCount - 1 ELSE 0 END WHERE u.id = :id")
     void decrementFollowingCount(@Param("id") String id);
+
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE User u SET u.tokenBalance = u.tokenBalance - 1 WHERE u.id = :id AND u.tokenBalance >= 1")
+    int decrementTokenBalance(@Param("id") String id);
 }
