@@ -1,0 +1,235 @@
+diff --git a/frontend/src/api/adminApi.ts b/frontend/src/api/adminApi.ts
+index dfb4b1d..fb05ca0 100644
+--- a/frontend/src/api/adminApi.ts
++++ b/frontend/src/api/adminApi.ts
+@@ -167,6 +167,14 @@ export const toggleArtworkVisibility = async (artworkId: string) => {
+     return res.data;
+ };
+ 
++/**
++ * 🛡️ 신고 처리 완료 (상태 변경)
++ */
++export const resolveAdminReport = async (reportId: string) => {
++    const res = await client.post(`/admin/reports/${reportId}/resolve`);
++    return res.data;
++};
++
+ /**
+  * 💵 결제 내역 조회 (어드민 - 페이징 & 검색 추가)
+  */
+diff --git a/frontend/src/artwork/Notifications.tsx b/frontend/src/artwork/Notifications.tsx
+index 7ce4ddb..d6b06b8 100644
+--- a/frontend/src/artwork/Notifications.tsx
++++ b/frontend/src/artwork/Notifications.tsx
+@@ -345,6 +345,7 @@ export default function Notifications() {
+                       {n.type === 'FOLLOW' && <> 님이 나를 팔로우하기 시작했어요</>}
+                       {n.type === 'FINISHED' && <> 님과 함께 그린 <span style={s.artworkName}>"{n.artworkTitle}"</span>이 완성됐어요</>}
+                     {n.type === 'INQUIRY_REPLY' && <> 문의 <span style={s.artworkName}>"{n.message}"</span>에 답변이 등록됐어요</>}
++                    {n.type === 'TOKEN' && <> 관리자님이 보너스 <span style={s.artworkName}>토큰 {n.amount}개</span>를 선물했어요!</>}
+                     </p>
+                     <p style={s.itemTime}>{timeAgo(n.createdAt)}</p>
+                   </div>
+diff --git a/frontend/src/pages/Home.tsx b/frontend/src/pages/Home.tsx
+index f981da3..441d8c4 100644
+--- a/frontend/src/pages/Home.tsx
++++ b/frontend/src/pages/Home.tsx
+@@ -19,13 +19,18 @@ function ArtworkCarousel() {
+   const pausedRef = useRef(false)
+ 
+   useEffect(() => {
+-    try {
+-      const saved = localStorage.getItem('admin_main_images')
+-      if (saved) {
+-        const parsed: (string | null)[] = JSON.parse(saved)
+-        setAdminImages(parsed.filter(Boolean) as string[])
+-      }
+-    } catch {}
++    // 🎨 [수정] 로컬스토리지 대신 백엔드 API에서 실시간으로 배너 목록을 가져옴
++    fetch('/api/admin/main-images')
++      .then(res => res.json())
++      .then((data: any[]) => {
++        const images = data
++          .filter(item => item.imageUrl)
++          .map(item => item.imageUrl);
++        setAdminImages(images);
++      })
++      .catch(() => {
++        // API 실패 시 기존 artworks 사용 (items logic에서 처리)
++      });
+ 
+     exploreArtworks('latest', undefined, 50)
+       .then(data => setArtworks(data.filter(a => a.imageUrl).slice(0, 10)))
+diff --git a/frontend/src/pages/admin/AdminArtworkManagement.tsx b/frontend/src/pages/admin/AdminArtworkManagement.tsx
+index 5187d49..035b765 100644
+--- a/frontend/src/pages/admin/AdminArtworkManagement.tsx
++++ b/frontend/src/pages/admin/AdminArtworkManagement.tsx
+@@ -1,5 +1,5 @@
+ import { useState, useEffect, useCallback } from 'react';
+-import { getAdminReportedArtworks, toggleArtworkVisibility } from '../../api/adminApi';
++import { getAdminReportedArtworks, toggleArtworkVisibility, resolveAdminReport } from '../../api/adminApi';
+ 
+ interface ReportedArtwork {
+     id: string; // Report ID
+@@ -44,6 +44,17 @@ const AdminArtworkManagement = () => {
+         return () => clearTimeout(timer);
+     }, [fetchReports]);
+ 
++    const handleResolveReport = async (reportId: string) => {
++        if (!confirm("이 신고를 처리 완료 상태로 변경하시겠습니까?")) return;
++        try {
++            await resolveAdminReport(reportId);
++            alert("신고 처리가 완료되었습니다.");
++            void fetchReports();
++        } catch {
++            alert("신고 처리에 실패했습니다.");
++        }
++    };
++
+     const toggleVisibility = async (artworkId: string) => {
+         if (!confirm(`이 작품의 노출 상태를 변경하시겠습니까?`)) return;
+ 
+@@ -121,8 +132,16 @@ const AdminArtworkManagement = () => {
+                                         onClick={() => void toggleVisibility(report.artworkId)} 
+                                         style={s.actionBtn}
+                                     >
+-                                        노출 상태 토글
++                                        노출 토글
+                                     </button>
++                                    {report.status === 'pending' && (
++                                        <button 
++                                            onClick={() => void handleResolveReport(report.id)} 
++                                            style={{...s.actionBtn, backgroundColor: '#10B981'}}
++                                        >
++                                            신고 해결
++                                        </button>
++                                    )}
+                                 </div>
+                             </div>
+                         </div>
+diff --git a/frontend/src/pages/admin/AdminSidebar.tsx b/frontend/src/pages/admin/AdminSidebar.tsx
+index 45e954e..c0d89cb 100644
+--- a/frontend/src/pages/admin/AdminSidebar.tsx
++++ b/frontend/src/pages/admin/AdminSidebar.tsx
+@@ -32,7 +32,6 @@ const AdminSidebar = () => {
+                         alt="Egag"
+                         style={s.logoImg}
+                     />
+-                    <div style={s.badge}>시스템 v2.0</div>
+                 </Link>
+             </div>
+ 
+diff --git a/frontend/src/pages/admin/PaymentManagement.tsx b/frontend/src/pages/admin/PaymentManagement.tsx
+index bd7af82..7267502 100644
+--- a/frontend/src/pages/admin/PaymentManagement.tsx
++++ b/frontend/src/pages/admin/PaymentManagement.tsx
+@@ -112,7 +112,10 @@ const PaymentManagement = () => {
+                                     <td style={s.td}>{new Date(p.createdAt).toLocaleString()}</td>
+                                     <td style={{...s.td, fontWeight: 700, color: '#1E293B'}}>{p.nickname}</td>
+                                     <td style={s.td}>{p.userEmail}</td>
+-                                    <td style={{...s.td, fontWeight: 800, color: '#6366F1'}}>+ {p.tokenCount} 🪙</td>
++                                    <td style={{...s.td, fontWeight: 800, color: '#6366F1'}}>
++                                        + {p.tokenCount} 
++                                        <img src="/token/token.png" alt="token" style={{ width: '16px', height: '16px', marginLeft: '4px', verticalAlign: 'middle' }} />
++                                    </td>
+                                     <td style={{...s.td, textAlign: 'right', fontWeight: 900, color: '#0F172A'}}>
+                                         ₩{(p.amount || 0).toLocaleString()}
+                                     </td>
+diff --git a/frontend/src/pages/admin/UserManagement.tsx b/frontend/src/pages/admin/UserManagement.tsx
+index 14294d2..2962a6c 100644
+--- a/frontend/src/pages/admin/UserManagement.tsx
++++ b/frontend/src/pages/admin/UserManagement.tsx
+@@ -160,7 +160,10 @@ const UserManagement = () => {
+                                             <td style={s.td}>{new Date(u.createdAt).toLocaleDateString()}</td>
+                                             <td style={{...s.td, fontWeight: 700, color: '#1E293B'}}>{u.nickname}</td>
+                                             <td style={s.td}>{u.email}</td>
+-                                            <td style={{...s.td, textAlign: 'center', fontWeight: 800, color: '#6366F1'}}>🪙 {(u.tokenBalance || 0).toLocaleString()}</td>
++                                            <td style={{...s.td, textAlign: 'center', fontWeight: 800, color: '#6366F1'}}>
++                                                <img src="/token/token.png" alt="token" style={{ width: '16px', height: '16px', marginRight: '4px', verticalAlign: 'middle' }} />
++                                                {(u.tokenBalance || 0).toLocaleString()}
++                                            </td>
+                                             <td style={{...s.td, textAlign: 'center'}}>
+                                                 <span style={{
+                                                     ...s.statusBadge,
+@@ -222,7 +225,10 @@ const UserManagement = () => {
+                                     <tr key={log.id} style={s.tr}>
+                                         <td style={s.td}>{new Date(log.createdAt).toLocaleString()}</td>
+                                         <td style={{...s.td, fontWeight: 700}}>{log.nickname}</td>
+-                                        <td style={{...s.td, textAlign: 'center', fontWeight: 800, color: '#6366F1'}}>+ {log.amount.toLocaleString()} 🪙</td>
++                                        <td style={{...s.td, textAlign: 'center', fontWeight: 800, color: '#6366F1'}}>
++                                            + {log.amount.toLocaleString()} 
++                                            <img src="/token/token.png" alt="token" style={{ width: '14px', height: '14px', marginLeft: '4px', verticalAlign: 'middle' }} />
++                                        </td>
+                                         <td style={s.td}>{log.reason}</td>
+                                     </tr>
+                                 ))
+@@ -231,7 +237,7 @@ const UserManagement = () => {
+                                     <td colSpan={4} style={{ padding: '60px 0', textAlign: 'center', background: 'linear-gradient(to bottom, #FFF, #F9FAFB)' }}>
+                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                                             <div style={{ width: '48px', height: '48px', backgroundColor: '#ECFDF5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+-                                                <span style={{ fontSize: '20px' }}>🪙</span>
++                                                <img src="/token/token.png" alt="token" style={{ width: '24px', height: '24px' }} />
+                                             </div>
+                                             <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#1E293B', margin: 0 }}>토큰 지급 기록이 없습니다.</h3>
+                                             <p style={{ fontSize: '12px', color: '#94A3B8', margin: 0 }}>활동 중인 회원들에게 보상 차원의 토큰을 지급할 수 있습니다.</p>
+diff --git a/src/main/java/com/egag/admin/AdminController.java b/src/main/java/com/egag/admin/AdminController.java
+index cdbb240..5f1eee1 100644
+--- a/src/main/java/com/egag/admin/AdminController.java
++++ b/src/main/java/com/egag/admin/AdminController.java
+@@ -10,6 +10,7 @@ import org.springframework.data.domain.Pageable;
+ import org.springframework.data.web.PageableDefault;
+ import org.springframework.http.ResponseEntity;
+ import org.springframework.web.bind.annotation.*;
++import org.springframework.security.core.annotation.AuthenticationPrincipal;
+ import java.time.LocalDateTime;
+ import java.util.*;
+ import java.util.stream.Collectors;
+@@ -47,9 +48,7 @@ public class AdminController {
+ 
+     @GetMapping("/users/search") 
+     public ResponseEntity<List<?>> searchUser(@RequestParam String keyword) { 
+-        Optional<?> user = userRepository.findByNickname(keyword)
+-                .or(() -> userRepository.findByEmail(keyword));
+-        return ResponseEntity.ok(user.map(List::of).orElse(List.of()));
++        return ResponseEntity.ok(userRepository.findAllByNicknameContainingOrEmailContaining(keyword, keyword));
+     }
+ 
+     @PatchMapping("/users/{userId}/status")
+@@ -59,8 +58,10 @@ public class AdminController {
+     }
+ 
+     @PostMapping("/tokens/manual")
+-    public ResponseEntity<String> giveToken(@RequestBody TokenRequest request) {
+-        String currentAdminId = "admin_01";
++    public ResponseEntity<String> giveToken(
++            @RequestBody TokenRequest request,
++            @AuthenticationPrincipal com.egag.auth.PrincipalDetails principal) {
++        String currentAdminId = principal != null ? principal.getUser().getId() : "admin_01";
+         adminService.giveManualToken(
+                 currentAdminId,
+                 request.getUserId(),
+diff --git a/src/main/java/com/egag/admin/AdminService.java b/src/main/java/com/egag/admin/AdminService.java
+index 8b30e8d..4b967d1 100644
+--- a/src/main/java/com/egag/admin/AdminService.java
++++ b/src/main/java/com/egag/admin/AdminService.java
+@@ -95,6 +95,7 @@ public class AdminService {
+                 .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
+ 
+         user.addToken(amount);
++        userRepository.save(user); // 명시적 저장 추가
+ 
+         AdminActionLog adminLog = AdminActionLog.builder()
+                 .adminId(adminId)
+diff --git a/src/main/java/com/egag/common/domain/UserRepository.java b/src/main/java/com/egag/common/domain/UserRepository.java
+index 6cc1b62..64fd3c1 100644
+--- a/src/main/java/com/egag/common/domain/UserRepository.java
++++ b/src/main/java/com/egag/common/domain/UserRepository.java
+@@ -11,6 +11,9 @@ import java.util.Optional;
+ public interface UserRepository extends JpaRepository<User, String> {
+     Optional<User> findByEmail(String email);
+     Optional<User> findByNickname(String nickname);
++    
++    // 🔍 [고유화] 어드민용 부분 일치 검색 추가
++    List<User> findAllByNicknameContainingOrEmailContaining(String nickname, String email);
+     boolean existsByEmail(String email);
+     boolean existsByNickname(String nickname);
+ 

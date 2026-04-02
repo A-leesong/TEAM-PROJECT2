@@ -97,6 +97,7 @@ export default function Decalcomania() {
   const [result, setResult] = useState<{ imageUrl: string; style: string; story: string } | null>(null)
   const [savedToGallery, setSavedToGallery] = useState(false)
   const [savingToGallery, setSavingToGallery] = useState(false)
+  const [isFilling, setIsFilling] = useState(false)
 
   // ─── 반응형 캔버스 ────────────────────────────────────
   useEffect(() => {
@@ -279,9 +280,12 @@ export default function Decalcomania() {
   }
 
   const handleBucketClick = useCallback((_e: KonvaEventObject<PointerEvent>) => {
-    if (!isBucket || !stageRef.current) return
+    if (!isBucket || !stageRef.current || isFilling) return
     const pos = stageRef.current.getPointerPosition()
-    if (!pos || pos.x > half) return  // 오른쪽 절반은 채우기 불가
+    if (!pos || pos.x > half) return
+
+    setIsFilling(true) // 락(Lock) 활성화
+
     const dataUrl = stageRef.current.toDataURL({ pixelRatio: 1, mimeType: 'image/png' })
     const img = new Image()
     img.onload = () => {
@@ -289,29 +293,34 @@ export default function Decalcomania() {
       offscreen.width = stageSize.width; offscreen.height = stageSize.height
       const ctx = offscreen.getContext('2d')!
       ctx.drawImage(img, 0, 0)
-      // 경계 1px 검은 테두리로 막아서 플러드필 누출 방지
+      
       const { width: w, height: h } = offscreen
       ctx.fillStyle = '#000000'
       ctx.fillRect(0, 0, w, 1); ctx.fillRect(0, h - 1, w, 1)
       ctx.fillRect(0, 0, 1, h); ctx.fillRect(w - 1, 0, 1, h)
+      
       floodFill(offscreen, Math.floor(pos.x), Math.floor(pos.y), color)
-      // 테두리 제거
-      ctx.fillStyle = '#ffffff'
-      ctx.fillRect(0, 0, w, 1); ctx.fillRect(0, h - 1, w, 1)
-      ctx.fillRect(0, 0, 1, h); ctx.fillRect(w - 1, 0, 1, h)
+      
+      // 테두리 복구를 clearRect로 안전하게 처리 (화이트아웃 방지)
+      ctx.clearRect(0, 0, w, 1); ctx.clearRect(0, h - 1, w, 1)
+      ctx.clearRect(0, 0, 1, h); ctx.clearRect(w - 1, 0, 1, h)
+      
       const result = new Image()
       result.onload = () => {
         setHistory(prev => {
           const next = prev.slice(0, historyIndex + 1)
-          const cur = prev[historyIndex]
+          const cur = next[next.length - 1] || prev[0]
           return [...next, { strokes: cur.strokes, fill: result }]
         })
         setHistoryIndex(i => i + 1)
+        setIsFilling(false) // 작업 완료 후 락 해제
       }
+      result.onerror = () => setIsFilling(false)
       result.src = offscreen.toDataURL()
     }
+    img.onerror = () => setIsFilling(false)
     img.src = dataUrl
-  }, [isBucket, color, stageSize, historyIndex])
+  }, [isBucket, color, stageSize, historyIndex, isFilling, half])
 
   const handleReset = () => {
     setHistory([{ strokes: [], fill: null }]); setHistoryIndex(0); setCurrentPoints([])
